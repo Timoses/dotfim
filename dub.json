@@ -1,0 +1,11 @@
+{
+	"name": "dotfim",
+	"authors": [
+		"timoses"
+	],
+	"description": "A minimal D application.",
+	"copyright": "Copyright © 2017, timoses",
+	"license": "proprietary",
+
+    "targetName": "DotFiM"
+}
