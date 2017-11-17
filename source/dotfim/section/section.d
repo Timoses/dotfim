@@ -1,21 +1,17 @@
 module dotfim.section.section;
 
-import dotfim.dotfile;
-
 abstract class Section
 {
     enum Part { Header, Content, Footer }
 
-    // true if section was handled in SectionHandler.handleFromRaw
-    bool bHandled;
+    // true if section successfully was loaded in SectionHandler.load
+    bool bLoaded;
 
     // set during handle() if section requires an update
     bool bRequiresUpdate;
 
     // name of the section
     string name;
-
-    string[] lines;
 
     private
     {
@@ -40,6 +36,11 @@ abstract class Section
         this.entries[part].lines = entry;
     }
 
+    string[] get(Part part)
+    {
+        return this.entries[part].lines;
+    }
+
     void setEntryComment(Part part, bool b)
     {
         this.entries[part].isComment = b;
@@ -49,38 +50,79 @@ abstract class Section
     string[] getHeader();
     string[] getFooter();
 
-    // handle incoming lines and trigger appropriate actions
-    // if required. Called when section exists.
-    bool handle(string[] lines);
+    // load section from lines, lines has to contain
+    // the complete section, no more, no less
+    bool load(string[] lines, string commentIndicator)
+    {
+        import std.algorithm;
 
-    // generates the section entries from scratch
+        auto doSplit = function (string[] mlines) {
+            return mlines.findSplit!((a,b) => a.canFind(b))([Section.metaSeparator]);
+        };
+
+        auto split = doSplit(lines);
+
+        import std.string : empty;
+        import std.exception : enforce;
+        enforce(!split[1].empty, "Could not find metaSeparator in section ", this.name);
+
+        // set entry and remove commentIndicator if applicable
+        void setRemoveCommentIndicator(Part part, string[] mlines)
+        {
+            import std.range : array;
+            set(part, mlines.map!((string line) {
+                import std.string : indexOf, chompPrefix;
+                return (this.entries[part].isComment
+                        && line.indexOf(commentIndicator) == 0)
+                    // return without commentIndicator
+                    ? line[commentIndicator.length .. $].chompPrefix(" ")
+                    : line; }
+                ).array);
+        }
+
+        // Header
+        setRemoveCommentIndicator(Part.Header, split[0]);
+
+        split = doSplit(split[2]);
+        enforce(!split[1].empty, "Could not find metaSeparator in section ", this.name);
+
+        // Content
+        setRemoveCommentIndicator(Part.Content, split[0]);
+        // Footer
+        setRemoveCommentIndicator(Part.Footer, split[2]);
+
+        this.bLoaded = true;
+
+        return this.bLoaded;
+    }
+
+    // generates the sectikn entries from scratch
     void generate();
 
-    string[] getLines(string commentIndicator)
+    string[] build(string commentIndicator)
     {
-        import std.string;
-        if (lines.empty)
-        {
-            lines ~= commentIndicator ~ this.sectionSeparator
-                        ~ commentIndicator;
-            lines ~= create(Part.Header, commentIndicator);
-            lines ~= commentIndicator ~ this.metaSeparator;
-            lines ~= create (Part.Content, commentIndicator);
-            lines ~= commentIndicator ~ this.metaSeparator;
-            lines ~= create(Part.Footer, commentIndicator);
-            lines ~= commentIndicator ~ this.sectionSeparator
-                        ~ commentIndicator;
-        }
+        string[] lines;
+
+        lines ~= commentIndicator ~ this.sectionSeparator
+                    ~ commentIndicator;
+        lines ~= build(Part.Header, commentIndicator);
+        lines ~= commentIndicator ~ this.metaSeparator;
+        lines ~= build (Part.Content, commentIndicator);
+        lines ~= commentIndicator ~ this.metaSeparator;
+        lines ~= build(Part.Footer, commentIndicator);
+        lines ~= commentIndicator ~ this.sectionSeparator
+                    ~ commentIndicator;
+
         return lines;
     }
 
-    string[] create(Part part, string commentIndicator)
+    string[] build(Part part, string commentIndicator)
     {
         string prefix = "";
         if (this.entries[part].isComment)
             prefix = commentIndicator ~ " ";
         import std.algorithm : map;
-        import std.range;
+        import std.range : array;
         return this.entries[part].lines.map!((a) => prefix ~ a).array;
     }
 
@@ -99,15 +141,15 @@ class SectionHandler
 
     string commentIndicator;
 
-    this(in Dotfile df)
+    this(string commentIndicator)
     {
         import std.stdio;
-        loadAvailableSections(df);
-        this.commentIndicator = df.commentIndicator;
+        loadAvailableSections();
+        this.commentIndicator = commentIndicator;
     }
 
     // load all classes derived from Section
-    void loadAvailableSections(in Dotfile df)
+    void loadAvailableSections()
     {
         foreach (mod; ModuleInfo)
         {
@@ -121,9 +163,9 @@ class SectionHandler
         }
     }
 
-    // Delivers matching raw lines to the appropriate section for
-    // further handling and returns unmatched lines
-    string[] handleFromRaw(string[] lines)
+    // Delivers matching raw lines to the appropriate section
+    // and returns unmatched lines
+    string[] load(string[] lines)
     {
         import std.algorithm;
 
@@ -147,7 +189,7 @@ class SectionHandler
             {
                if (section.identifiesWith(split[0]))
                {
-                   section.handle(split[0]);
+                   section.load(split[0], this.commentIndicator);
                    break;
                }
             }
@@ -158,8 +200,8 @@ class SectionHandler
         import std.exception : enforce;
         // should have handled/found all sections now
         foreach (section; this.sections)
-            enforce(section.bHandled, "Section " ~ section.name ~
-                    " could not properly be handled or found");
+            enforce(section.bLoaded, "Section " ~ section.name ~
+                    " could not properly be loaded or found");
 
         unhandledLines ~= split[0];
 
@@ -172,27 +214,38 @@ class SectionHandler
             sec.generate();
     }
 
-    string[] getSections(string separator)
+    string[] getAllSectionsLines(string separator)
     {
         string[] lines;
         foreach (sec; this.sections)
         {
-            lines ~= sec.getLines(this.commentIndicator) ~ separator;
+            lines ~= sec.build(this.commentIndicator) ~ separator;
         }
         return lines;
     }
 
-    string[] getSection(alias T)()
+    string[] getSectionLines(alias T)()
     {
-        pragma(msg, T);
         foreach (sec; this.sections)
         {
             if (cast(T)sec)
             {
-                return sec.getLines(this.commentIndicator);
+                return sec.build(this.commentIndicator);
             }
         }
         return [];
+    }
+
+    Section getSection(alias T)()
+    {
+        foreach (sec; this.sections)
+        {
+            if (cast(T)sec)
+            {
+                return sec;
+            }
+        }
+        return null;
     }
 }
 

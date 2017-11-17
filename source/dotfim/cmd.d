@@ -1,22 +1,22 @@
 module dotfim.cmd;
 
-import dotfim.updater;
+import dotfim.dotfim;
 
 class CmdHandler
 {
-    DotfileUpdater dfUpdater;
+    DotfileManager dfUpdater;
 
-    this(DotfileUpdater dfUpdater)
+    this(DotfileManager dfUpdater)
     {
         this.dfUpdater = dfUpdater;
     }
 
     void executeCLI(string[] args)
     {
-        import std.stdio;
-        int test;
         import std.getopt;
 
-
+        import std.range : empty;
+        if (args.empty)
+            this.dfUpdater.update();
     }
 }

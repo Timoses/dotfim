@@ -20,7 +20,6 @@ class Git
         import std.string : chomp;
         this.savedBranch = chomp(
                 execute("rev-parse", "--abbrev-ref", "HEAD").output);
-        writeln(this.savedBranch);
     }
 
     void resetBranch()
@@ -40,7 +39,8 @@ class Git
     }
 
     @property string hash() {
-        return execute("rev-parse", "HEAD").output; }
+        import std.string : chomp;
+        return execute("rev-parse", "HEAD").output.chomp; }
 
     auto execute(string[] cmds ...)
     {
