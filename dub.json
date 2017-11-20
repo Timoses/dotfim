@@ -3,7 +3,7 @@
 	"authors": [
 		"timoses"
 	],
-	"description": "A minimal D application.",
+	"description": "DotfiM - A Dotfile Manager",
 	"copyright": "Copyright © 2017, timoses",
 	"license": "proprietary"
 }
