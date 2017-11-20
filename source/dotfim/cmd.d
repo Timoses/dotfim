@@ -18,5 +18,17 @@ class CmdHandler
         import std.range : empty;
         if (args.empty)
             this.dfUpdater.update();
+        else
+        {
+            import std.exception : enforce;
+            switch (args[0])
+            {
+                case "add":
+                    this.dfUpdater.add(args[1..$]);
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 }

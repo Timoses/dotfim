@@ -28,6 +28,23 @@ class GitDot
             new Dotfile(dfilePath, this.commentIndicator, createHeaderLine());
     }
 
+    static GitDot create(string dotname, string commentIndicator, string gitPath, string dotPath)
+    {
+        import std.path, std.file;
+        assert(dotname.dirName == ".", "Only accepts file name without path");
+
+        string gitFile = buildPath(gitPath, dotname);
+
+        assert(!exists(gitFile));
+
+        import std.stdio : File;
+        File newGit = File(gitFile, "w");
+        newGit.writeln(commentIndicator ~ " " ~ fileHeader);
+        newGit.close();
+
+        return new GitDot(gitFile, buildPath(dotPath, dotname));
+    }
+
     string createHeaderLine()
     {
         import std.string : empty;
