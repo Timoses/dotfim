@@ -26,6 +26,9 @@ class CmdHandler
                 case "add":
                     this.dfUpdater.add(args[1..$]);
                     break;
+                case "remove":
+                    this.dfUpdater.remove(args[1..$]);
+                    break;
                 default:
                     break;
             }

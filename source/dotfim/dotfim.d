@@ -187,7 +187,6 @@ class DotfileManager
     }
 
     // Adds dotfiles to git repo and starts managing these files
-    // prompts for creation of non-existing files
     // The gitfile should not exist
     // If the dotfile does not exist create it
     void add(string[] dotfiles)
@@ -208,8 +207,7 @@ class DotfileManager
                 continue;
             }
 
-            import std.algorithm : canFind;
-            if (this.gitdots.canFind!((e) { return e.dotfile.file == file;}))
+            if (findGitDot(absFile))
             {
                 stderr.writeln("File ", file, " is already managed by DotfiM");
                 continue;
@@ -241,7 +239,7 @@ class DotfileManager
             foreach (gitdot; createdGitDots)
             {
                 this.git.execute("add", gitdot.gitfile.file);
-                addedFiles ~= gitdot.gitfile.file.baseName;
+                addedFiles ~= gitdot.gitfile.file.baseName ~ "\n";
             }
 
             import std.algorithm : uniq;
@@ -255,7 +253,69 @@ class DotfileManager
             // and add new dotfiles
             update();
         }
+    }
 
+    // Remove gitFile if existing and write only custom content
+    // to dotfile (if none leave it empty)
+    void remove(string[] files)
+    {
+        update();
 
+        string removedFiles;
+
+        foreach (file; files)
+        {
+            GitDot found = findGitDot(file);
+            if (!found)
+            {
+                stderr.writeln("File ", file, " could not be removed as it is not managed by DotfiM.");
+                continue;
+            }
+
+            // remove git
+            git.execute("rm", found.gitfile.file);
+            removedFiles ~= baseName(found.gitfile.file) ~ "\n";
+
+            with (found.dotfile)
+            {
+                write(customLines);
+            }
+
+            import std.algorithm.mutation : remove;
+            this.gitdots = this.gitdots.remove!((a) => a == found);
+        }
+
+        if (removedFiles != "")
+        {
+            this.git.execute("commit", "-m",
+                    "DotfiM Remove: \n\n" ~ removedFiles);
+
+            writeln("Removed:");
+            import std.string : splitLines, join;
+            import std.algorithm : map;
+            writeln(removedFiles
+                        .splitLines
+                        .map!((e) => "\t" ~ e)
+                        .join("\n"));
+
+            update();
+        }
+    }
+
+    GitDot findGitDot(string file)
+    {
+        import std.path : asAbsolutePath;
+        import std.range : array;
+
+        file = asNormalizedPath(asAbsolutePath(file).array).array;
+
+        import std.algorithm : canFind;
+        foreach (ref gitdot; this.gitdots)
+        {
+            if (gitdot.dotfile.file == file)
+                return gitdot;
+        }
+
+        return null;
     }
 }

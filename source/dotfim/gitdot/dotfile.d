@@ -84,6 +84,11 @@ class Dotfile
         getGitSection().set(Section.Part.Content, lines);
     }
 
+    @property string[] customLines()
+    {
+        return this._customLines;
+    }
+
     GitSection getGitSection()
     {
         return cast(GitSection)
@@ -98,11 +103,17 @@ class Dotfile
         this._rawLines ~= this._headerLine;
         this._rawLines ~= this._customLines;
         this._rawLines ~= this.sectionHandler.getSectionLines!(GitSection)();
+
+        write(this._rawLines);
+    }
+
+    void write(string[] lines)
+    {
         // replace file with new content
         import std.file;
         std.file.remove(this.file);
         File home = File(this.file, "w");
-        foreach (line; this._rawLines)
+        foreach (line; lines)
             home.writeln(line);
     }
 }
