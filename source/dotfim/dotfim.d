@@ -267,7 +267,7 @@ class DotfileManager
                     if (dfUpdatees.canFind(gitdot))
                         writeln("\t" ~
                             asRelativePath(gitdot.dotfile.file,
-                                this.settings.gitPath).to!string);
+                                this.settings.dotPath).to!string);
                 }
             }
 
