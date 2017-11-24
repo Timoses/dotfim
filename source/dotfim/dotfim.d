@@ -12,8 +12,89 @@ class DotfileManager
 
     enum dotfimGitBranch = "dotfim";
 
-    string dotPath;
-    string gitPath;
+    struct Settings
+    {
+        private bool _bInitialized;
+        @property bool isInitialized() { return this._bInitialized; }
+
+        string settingsFile;
+
+        struct Internal
+        {
+            // The path where the dotfiles should be synchronized to
+            string dotPath;
+
+            // The path from where dotfiles are synchronized from
+            // (must be a path to a git repository)
+            string gitPath;
+
+            // The remote git Repository URI
+            string gitRepo;
+        }
+        Internal internal;
+
+        @property string dotPath() { return this.internal.dotPath; }
+        @property string gitPath() { return this.internal.gitPath; }
+        @property string gitRepo() { return this.internal.gitRepo; }
+        @property void dotPath(string newEntry) {
+            this.internal.dotPath = newEntry; }
+        @property void gitPath(string newEntry) {
+            this.internal.gitPath = newEntry; }
+        @property void gitRepo(string newEntry) {
+            this.internal.gitRepo = newEntry; }
+
+        this(this)
+        {
+            assert(
+                    this.internal.dotPath != "" &&
+                    this.internal.gitPath != "" &&
+                    this.internal.gitRepo != ""
+                  );
+            this._bInitialized = true;
+        }
+
+        this(string settingsFile)
+        {
+            import std.file : readText, exists;
+            import std.exception : enforce;
+
+            enforce(exists(settingsFile), "No settings seem to be stored. Please run dotfim sync");
+
+            import std.json;
+            auto json = parseJSON(readText(settingsFile));
+
+            // The settings json must contain our entries
+            enforce("dotPath" in json && "gitRepo" in json
+                    && "gitPath" in json,
+                    "Please run dotfim sync");
+
+            this.dotPath = json["dotPath"].str;
+            this.gitPath = json["gitPath"].str;
+            this.gitRepo = json["gitRepo"].str;
+
+            this._bInitialized = true;
+        }
+
+        void save()
+        {
+            assert(this.settingsFile != "");
+
+            import std.file : remove, exists;
+            if (exists(settingsFile)) remove(settingsFile);
+
+            import std.stdio : File;
+            File json = File(settingsFile, "w");
+
+            import vibe.data.json : serializeToJsonString;
+            string toFile = this.internal.serializeToJsonString();
+
+            assert(toFile != ""); // prevents writing empty string on crash
+
+            json.write(toFile);
+            json.close();
+        }
+    }
+    Settings settings;
 
     Git git;
 
@@ -22,19 +103,34 @@ class DotfileManager
 
     static string[] excludedDotFiles = [".git", ".gitignore"];
 
-    this(string dotfilesRepo)
+    this(string settingsFile)
     {
-        import std.process : environment;
-        dotPath = environment.get("HOME");
-        gitPath = dotfilesRepo;
+        this.settings = Settings(settingsFile);
+        this();
+    }
 
-        this.git = new Git(gitPath);
+    this(ref in Settings settings)
+    {
+        this.settings = settings;
+        // save the settings to disk
+        this.settings.save();
+        this();
+    }
+
+    this()
+    {
+        assert(this.settings.isInitialized);
+
+        // Prepare git path
+        this.git = new Git(this.settings.gitPath);
         this.git.saveBranch();
         this.git.setBranch(dotfimGitBranch);
 
-        import std.file;
         string gitHash = this.git.hash;
-        foreach (string name; dirEntries(gitPath, ".*", SpanMode.shallow))
+
+        import std.file;
+        // Create a GitDot for every dotfile in gitPath
+        foreach (string name; dirEntries(this.settings.gitPath, ".*", SpanMode.shallow))
         {
             import std.algorithm : canFind;
             if (this.excludedDotFiles.canFind(baseName(name)))
@@ -44,7 +140,7 @@ class DotfileManager
                 import std.path : buildPath;
                 this.gitdots ~= new GitDot(
                         name,
-                        buildPath(dotPath, name.baseName));
+                        buildPath(this.settings.dotPath, name.baseName));
             }
             catch (Exception e) {
                 stderr.writeln(name.baseName, " - Error: ", e.message);
@@ -82,7 +178,7 @@ class DotfileManager
                     import std.conv : to;
                     string relGitPath = asRelativePath(
                             gitdot.gitfile.file,
-                            this.gitPath).to!string;
+                            this.settings.gitPath).to!string;
                     import std.string : splitLines;
                     import std.range : drop;
                     string[] oldGitLines =
@@ -123,7 +219,7 @@ class DotfileManager
                 this.git.execute("add", gitdot.gitfile.file);
                 import std.conv : to;
                 changedFiles ~= asRelativePath(gitdot.gitfile.file,
-                                    this.gitPath).to!string
+                                    this.settings.gitPath).to!string
                                 ~ "\n";
             }
 
@@ -171,7 +267,7 @@ class DotfileManager
                     if (dfUpdatees.canFind(gitdot))
                         writeln("\t" ~
                             asRelativePath(gitdot.dotfile.file,
-                                this.gitPath).to!string);
+                                this.settings.gitPath).to!string);
                 }
             }
 
@@ -201,9 +297,9 @@ class DotfileManager
             import std.path, std.range;
             import std.algorithm : canFind;
             string absFile = asAbsolutePath(file).array;
-            if (!absFile.canFind(this.dotPath))
+            if (!absFile.canFind(this.settings.dotPath))
             {
-                stderr.writeln("File ", file, " does not reside within the dotfile path (", this.dotPath, ")!");
+                stderr.writeln("File ", file, " does not reside within the dotfile path (", this.settings.dotPath, ")!");
                 continue;
             }
 
@@ -214,7 +310,7 @@ class DotfileManager
             }
 
             write("Please specify the comment indicator for file ",
-                    asRelativePath(file, this.dotPath),
+                    asRelativePath(file, this.settings.dotPath),
                     ": ");
             import std.string : chomp;
             string commentIndicator = readln().chomp();
@@ -223,8 +319,8 @@ class DotfileManager
             {
                 createdGitDots ~= GitDot.create(file.baseName,
                                               commentIndicator,
-                                              gitPath,
-                                              dotPath);
+                                              this.settings.gitPath,
+                                              this.settings.dotPath);
             }
             catch (Exception e)
             {
@@ -300,6 +396,105 @@ class DotfileManager
 
             update();
         }
+    }
+
+    static DotfileManager sync(string[] repoURI, string settingsFile)
+    {
+        import std.exception : enforce;
+        enforce(repoURI.length == 1, "Can only sync one git repository");
+
+        string dotPath;
+        string gitPath;
+        string gitRepo = repoURI[0];
+
+        Settings settings;
+        try
+        {
+            settings = Settings(settingsFile);
+            writeln("DotfiM is already set up to sync with the following settings:");
+            write("\t");
+            writeln(settings.internal);
+            write("Syncing will delete old setup. Continue? (y/n): ");
+
+            char answer;
+            readf!"%c"(answer);
+
+            if (answer != 'y') return null;
+            readln(); // flush the 'ENTER'
+
+            // keep current path setup
+            dotPath = settings.dotPath;
+            gitPath = settings.gitPath;
+        }
+        catch (Exception e)
+        {
+            // settingsFile seems corrupt
+            writeln("... No settings file found, will create new one");
+
+            // Generate default locations
+            import std.process : environment;
+            dotPath = environment.get("HOME");
+
+            import std.file;
+            gitPath = buildPath(thisExePath().dirName, "dotfimRepo");
+        }
+
+        string askPath(string description, string path)
+        {
+            string enteredPath;
+
+            do
+            {
+                std.stdio.write(description, " (default: ",
+                        path, "): ");
+
+                import std.string : chomp;
+                enteredPath = readln().chomp();
+
+                if (enteredPath == "") enteredPath = path;
+            } while (!isValidPath(enteredPath));
+
+            return enteredPath;
+        }
+
+        writeln("Confirm defaults with ENTER or type desired option");
+
+        import std.path : mkdir, rmdir;
+        import std.file : exists;
+
+        string[] pathsCreated;
+        scope(failure)
+        {
+            foreach (path; pathsCreated)
+                rmdir(path);
+        }
+        // Ask user for desired locations
+        dotPath = askPath("Your home path", dotPath);
+        if (!exists(dotPath))
+        {
+            mkdir(dotPath);
+            pathsCreated ~= dotPath;
+        }
+
+        gitPath = askPath("DotfiM Git Repository Path", gitPath);
+
+        import std.file : rmdirRecurse;
+        if (exists(gitPath)) rmdirRecurse(gitPath);
+
+        mkdir(gitPath);
+        pathsCreated ~= gitPath;
+
+        auto res = Git.staticExecute!(Git.ErrorMode.Ignore)
+            ("", "clone", "--branch", dotfimGitBranch, gitRepo, gitPath);
+        enforce(res.status == 0, "Could not clone the repository " ~
+                gitRepo ~ "\n Git Error: " ~ res.output);
+
+        settings.dotPath = dotPath;
+        settings.gitPath = gitPath;
+        settings.gitRepo = repoURI[0];
+        settings.settingsFile = settingsFile;
+
+        return new DotfileManager(settings);
     }
 
     GitDot findGitDot(string file)

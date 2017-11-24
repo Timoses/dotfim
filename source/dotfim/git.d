@@ -44,12 +44,20 @@ class Git
 
     auto execute(string[] cmds ...)
     {
+        return Git.staticExecute(this.dir, cmds);
+    }
+
+    enum ErrorMode { Throw, Ignore };
+    static auto staticExecute(ErrorMode emode = ErrorMode.Throw)(string location, string[] cmds ...)
+    {
        import std.process : execute;
        import std.exception : enforce;
-       auto res = execute(["git", "-C", this.dir] ~ cmds);
+       auto res = execute(["git", "-C", location] ~ cmds);
        import std.format : format;
-       enforce(res.status == 0, format(
-                   "An error while executing git %-(%s %)", cmds));
+       enforce(emode == ErrorMode.Ignore || res.status == 0, format(
+                   "Error while executing git %-(%s %)\n Exited with: %s",
+                   cmds,
+                   res.output));
        return res;
     }
 }

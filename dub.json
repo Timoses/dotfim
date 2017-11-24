@@ -5,5 +5,9 @@
 	],
 	"description": "DotfiM - A Dotfile Manager",
 	"copyright": "Copyright © 2017, timoses",
-	"license": "proprietary"
+	"license": "proprietary",
+
+    "dependencies": {
+        "vibe-d:data": "~>0.8.2-rc.1"
+    }
 }
