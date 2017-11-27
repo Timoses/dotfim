@@ -20,7 +20,6 @@ class Dotfile
 
         // read
         string _headerLine;
-        string[] _customLines;
     }
 
     SectionHandler sectionHandler;
@@ -44,16 +43,21 @@ class Dotfile
         this.sectionHandler = new SectionHandler(commentIndicator);
 
         import std.range : empty;
+        string[] customLines;
         if (!this._rawLines.empty && this._rawLines[0] == managedHeader)
         {
             this.managed = true;
-            this._customLines = this.sectionHandler.load(this._rawLines[1..$]);
+            customLines = this.sectionHandler.load(this._rawLines[1..$]);
         }
         else
         {
             this.managed = false;
-            this._customLines = this._rawLines;
+            customLines = this._rawLines;
         }
+
+        // move all customLines to LocalSection
+        this.sectionHandler.getSection!LocalSection.append(
+                Section.Part.Content, customLines);
     }
 
     @property string gitHash()
@@ -84,9 +88,9 @@ class Dotfile
         getGitSection().set(Section.Part.Content, lines);
     }
 
-    @property string[] customLines()
+    @property string[] localLines()
     {
-        return this._customLines;
+        return this.sectionHandler.getSectionLines!(LocalSection)();
     }
 
     GitSection getGitSection()
@@ -101,8 +105,8 @@ class Dotfile
 
         this._rawLines.length = 0;
         this._rawLines ~= this._headerLine;
-        this._rawLines ~= this._customLines;
         this._rawLines ~= this.sectionHandler.getSectionLines!(GitSection)();
+        this._rawLines ~= this.sectionHandler.getSectionLines!(LocalSection)();
 
         write(this._rawLines);
     }

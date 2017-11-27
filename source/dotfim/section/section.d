@@ -36,6 +36,11 @@ abstract class Section
         this.entries[part].lines = entry;
     }
 
+    void append(Part part, string[] entry)
+    {
+        this.entries[part].lines ~= entry;
+    }
+
     string[] get(Part part)
     {
         return this.entries[part].lines;

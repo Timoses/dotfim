@@ -414,7 +414,7 @@ class DotfileManager
 
             with (found.dotfile)
             {
-                write(customLines);
+                write(localLines);
             }
 
             import std.algorithm.mutation : remove;
