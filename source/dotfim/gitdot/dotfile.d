@@ -90,7 +90,8 @@ class Dotfile
 
     @property string[] localLines()
     {
-        return this.sectionHandler.getSectionLines!(LocalSection)();
+        return this.sectionHandler.getSection!(LocalSection)()
+                    .get(Section.Part.Content);
     }
 
     GitSection getGitSection()
