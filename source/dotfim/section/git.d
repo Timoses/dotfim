@@ -21,11 +21,12 @@ class GitSection : Section
 
     override string[] getHeaderTitle()
     {
-        return ["DotFiM - Git Section"];
+        return ["DotfiM - Git Section"];
     }
 
     override string[] getHeader()
     {
+        assert(this._gitHash != "");
         return getHeaderTitle() ~
                  [" Changes to this section are synchronized with your dotfiles repo",
                  " Git Commit Hash: " ~ this._gitHash];
@@ -33,7 +34,7 @@ class GitSection : Section
 
     override string[] getFooter()
     {
-        return ["DotFiM - end of Git Section"];
+        return ["DotfiM - end of Git Section"];
     }
 
     string retrieveGitHash(string[] lines)

@@ -1,5 +1,7 @@
 module dotfim.section.section;
 
+// A section is made up of a Header, Content and Footer Part.
+// See build() function to see how the section is built together.
 abstract class Section
 {
     enum Part { Header, Content, Footer }
@@ -101,7 +103,7 @@ abstract class Section
         return this.bLoaded;
     }
 
-    // generates the sectikn entries from scratch
+    // generates the section entries from scratch
     void generate();
 
     string[] build(string commentIndicator)
