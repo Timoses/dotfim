@@ -38,9 +38,32 @@ class Git
         execute("checkout", branchName);
     }
 
-    @property string hash() {
+    void commit(string commitMsg)
+    {
+        this.execute("commit", "-m", commitMsg);
+    }
+
+    void push(string branch)
+    {
+        this.execute("push", "origin", branch);
+    }
+
+    @property string hash()
+    {
         import std.string : chomp;
-        return execute("rev-parse", "HEAD").output.chomp; }
+        import std.stdio;
+        return execute("rev-parse", "HEAD").output.chomp;
+    }
+
+    @property string remoteHash(string branchName = "")
+    {
+        if (branchName == "")
+            branchName = execute("symbolic-ref", "--quiet", "--short", "HEAD").output;
+        import std.exception : enforce;
+        enforce(branchName != "", "Unable to determine branch for remote hash.");
+        import std.string : chomp;
+        return execute("rev-parse", "origin/dotfim").output.chomp;
+    }
 
     auto execute(string[] cmds ...)
     {

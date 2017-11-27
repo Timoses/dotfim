@@ -5,5 +5,8 @@ import dotfim.cmd;
 void main(string[] args)
 {
     // first argument = program name
-    CmdHandler.executeCLI!DotfileManager(args[1..$], "dotfim.json");
+    import std.file : thisExePath;
+    import std.path : buildPath, dirName;
+    CmdHandler.executeCLI!DotfileManager(args[1..$],
+            buildPath(thisExePath().dirName, "dotfim.json"));
 }

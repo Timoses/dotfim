@@ -121,10 +121,8 @@ class DotfileManager
     {
         assert(this.settings.isInitialized);
 
-        // Prepare git path
         this.git = new Git(this.settings.gitPath);
-        this.git.saveBranch();
-        this.git.setBranch(dotfimGitBranch);
+        prepareGitBranch();
 
         string gitHash = this.git.hash;
 
@@ -144,6 +142,50 @@ class DotfileManager
             }
             catch (Exception e) {
                 stderr.writeln(name.baseName, " - Error: ", e.message);
+            }
+        }
+    }
+
+    void prepareGitBranch()
+    {
+        this.git.saveBranch();
+        this.git.setBranch(dotfimGitBranch);
+
+        writeln("... Fetching remote repository ...");
+        this.git.execute("fetch");
+
+        string local = this.git.hash;
+        string remote = this.git.remoteHash;
+
+        if (local != remote)
+        {
+            import std.algorithm : canFind;
+            // remote branch is ahead -> checkout remote
+            if (this.git.execute("branch", "-a", "--contains", this.dotfimGitBranch).output.canFind("origin/" ~ this.dotfimGitBranch))
+            {
+                writeln("... Checking out remote repository ...");
+                this.git.execute("checkout", "-B", this.dotfimGitBranch,
+                        "origin/" ~ this.dotfimGitBranch);
+                writeln("Checked out remote branch: ", remote[0..6]);
+            }
+
+            // remote and local branches diverged -> block!
+            import std.string : chomp;
+            string mergeBase = this.git.execute("merge-base",
+                    this.dotfimGitBranch,
+                    "origin/" ~ this.dotfimGitBranch).output.chomp;
+            import std.exception : enforce;
+            enforce(mergeBase != ""
+                    && (mergeBase == local || mergeBase == remote),
+                    "Remote and local branches diverged! Please fix manually.");
+
+            // else: local is ahead of remote
+            if (this.git.execute("branch", "--contains",
+                        "origin/" ~ this.dotfimGitBranch).output
+                    .canFind("* dotfim"))
+            {
+                writeln("... Pushing to remote repository ...");
+                this.git.push(this.dotfimGitBranch);
             }
         }
     }
@@ -226,8 +268,7 @@ class DotfileManager
             import std.string : chomp;
             changedFiles = changedFiles.chomp;
 
-            this.git.execute("commit", "-m",
-                    "DotfiM Update: \n\n" ~ changedFiles);
+            this.commitAndPush("DotfiM Update: \n\n" ~ changedFiles);
             curGitHash = this.git.hash;
 
             writeln("Git repo files updated:");
@@ -342,8 +383,7 @@ class DotfileManager
             import std.range : array;
             this.gitdots = uniq!((e1,e2) => e1.dotfile.file == e2.dotfile.file)(createdGitDots ~ this.gitdots).array;
 
-            this.git.execute("commit", "-m",
-                    "DotfiM Add: \n\n" ~ addedFiles);
+            this.commitAndPush("DotfiM Add: \n\n" ~ addedFiles);
 
             // Update dotfiles with new gitHash version
             // and add new dotfiles
@@ -383,8 +423,7 @@ class DotfileManager
 
         if (removedFiles != "")
         {
-            this.git.execute("commit", "-m",
-                    "DotfiM Remove: \n\n" ~ removedFiles);
+            this.commitAndPush("DotfiM Remove: \n\n" ~ removedFiles);
 
             writeln("Removed:");
             import std.string : splitLines, join;
@@ -495,6 +534,21 @@ class DotfileManager
         settings.settingsFile = settingsFile;
 
         return new DotfileManager(settings);
+    }
+
+    void commitAndPush(string commitMsg)
+    {
+        this.git.commit(commitMsg);
+
+        writeln("... Reaching out to git repository ...");
+        try
+        {
+            this.git.push(dotfimGitBranch);
+        }
+        catch (Exception e)
+        {
+            writeln("... Error while pushing to remote repository:\n\t", e.msg);
+        }
     }
 
     GitDot findGitDot(string file)
