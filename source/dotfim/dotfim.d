@@ -12,88 +12,10 @@ class DotfileManager
 
     enum dotfimGitBranch = "dotfim";
 
-    struct Settings
-    {
-        private bool _bInitialized;
-        @property bool isInitialized() { return this._bInitialized; }
+    mixin OptionsTemplate;
+    Options options;
 
-        string settingsFile;
-
-        struct Internal
-        {
-            // The path where the dotfiles should be synchronized to
-            string dotPath;
-
-            // The path from where dotfiles are synchronized from
-            // (must be a path to a git repository)
-            string gitPath;
-
-            // The remote git Repository URI
-            string gitRepo;
-        }
-        Internal internal;
-
-        @property string dotPath() { return this.internal.dotPath; }
-        @property string gitPath() { return this.internal.gitPath; }
-        @property string gitRepo() { return this.internal.gitRepo; }
-        @property void dotPath(string newEntry) {
-            this.internal.dotPath = newEntry; }
-        @property void gitPath(string newEntry) {
-            this.internal.gitPath = newEntry; }
-        @property void gitRepo(string newEntry) {
-            this.internal.gitRepo = newEntry; }
-
-        this(this)
-        {
-            assert(
-                    this.internal.dotPath != "" &&
-                    this.internal.gitPath != "" &&
-                    this.internal.gitRepo != ""
-                  );
-            this._bInitialized = true;
-        }
-
-        this(string settingsFile)
-        {
-            import std.file : readText, exists;
-            import std.exception : enforce;
-
-            enforce(exists(settingsFile), "No settings seem to be stored. Please run dotfim sync");
-
-            import std.json;
-            auto json = parseJSON(readText(settingsFile));
-
-            // The settings json must contain our entries
-            enforce("dotPath" in json && "gitRepo" in json
-                    && "gitPath" in json,
-                    "Please run dotfim sync");
-
-            this.dotPath = json["dotPath"].str;
-            this.gitPath = json["gitPath"].str;
-            this.gitRepo = json["gitRepo"].str;
-
-            this._bInitialized = true;
-        }
-
-        void save()
-        {
-            assert(this.settingsFile != "");
-
-            import std.file : remove, exists;
-            if (exists(settingsFile)) remove(settingsFile);
-
-            import std.stdio : File;
-            File json = File(settingsFile, "w");
-
-            import vibe.data.json : serializeToJsonString;
-            string toFile = this.internal.serializeToJsonString();
-
-            assert(toFile != ""); // prevents writing empty string on crash
-
-            json.write(toFile);
-            json.close();
-        }
-    }
+    mixin SettingsTemplate;
     Settings settings;
 
     Git git;
@@ -103,9 +25,10 @@ class DotfileManager
 
     static string[] excludedDotFiles = [".git", ".gitignore"];
 
-    this(string settingsFile)
+    this(string settingsFile, Options options)
     {
         this.settings = Settings(settingsFile);
+        this.options = options;
         this();
     }
 
@@ -151,8 +74,11 @@ class DotfileManager
         this.git.saveBranch();
         this.git.setBranch(dotfimGitBranch);
 
-        writeln("... Fetching remote repository ...");
-        this.git.execute("fetch");
+        if (!this.options.bNoRemote)
+        {
+            writeln("... Fetching remote repository ...");
+            this.git.execute("fetch");
+        }
 
         string local = this.git.hash;
         string remote = this.git.remoteHash;
@@ -179,8 +105,9 @@ class DotfileManager
                     && (mergeBase == local || mergeBase == remote),
                     "Remote and local branches diverged! Please fix manually.");
 
-            // else: local is ahead of remote
-            if (this.git.execute("branch", "--contains",
+            // else: local is ahead of remote?
+            if (!this.options.bNoRemote
+                    && this.git.execute("branch", "--contains",
                         "origin/" ~ this.dotfimGitBranch).output
                     .canFind("* dotfim"))
             {
@@ -402,6 +329,7 @@ class DotfileManager
         foreach (file; files)
         {
             GitDot found = findGitDot(file);
+
             if (!found)
             {
                 stderr.writeln("File ", file, " could not be removed as it is not managed by DotfiM.");
@@ -540,14 +468,17 @@ class DotfileManager
     {
         this.git.commit(commitMsg);
 
-        writeln("... Reaching out to git repository ...");
-        try
+        if (!this.options.bNoRemote)
         {
-            this.git.push(dotfimGitBranch);
-        }
-        catch (Exception e)
-        {
-            writeln("... Error while pushing to remote repository:\n\t", e.msg);
+            writeln("... Reaching out to git repository ...");
+            try
+            {
+                this.git.push(dotfimGitBranch);
+            }
+            catch (Exception e)
+            {
+                writeln("... Error while pushing to remote repository:\n\t", e.msg);
+            }
         }
     }
 
@@ -568,3 +499,118 @@ class DotfileManager
         return null;
     }
 }
+
+mixin template OptionsTemplate()
+{
+    struct Options
+    {
+        bool bNeededHelp;
+        bool bNoRemote;
+
+        static Options process(ref string[] inOptions)
+        {
+            Options options;
+            import std.getopt;
+
+            with(options)
+            {
+                auto rslt = getopt(inOptions,
+                        "no-remote", "Prevents any interaction with the remote repository (no push/pull)", &bNoRemote);
+
+                if (rslt.helpWanted)
+                {
+                    options.bNeededHelp = true;
+                    defaultGetoptPrinter("DotfiM - the following options are available:", rslt.options);
+                }
+            }
+            return options;
+        }
+    }
+}
+
+mixin template SettingsTemplate()
+{
+    struct Settings
+    {
+        private bool _bInitialized;
+        @property bool isInitialized() { return this._bInitialized; }
+
+        string settingsFile;
+
+        struct Internal
+        {
+            // The path where the dotfiles should be synchronized to
+            string dotPath;
+
+            // The path from where dotfiles are synchronized from
+            // (must be a path to a git repository)
+            string gitPath;
+
+            // The remote git Repository URI
+            string gitRepo;
+        }
+        Internal internal;
+
+        @property string dotPath() { return this.internal.dotPath; }
+        @property string gitPath() { return this.internal.gitPath; }
+        @property string gitRepo() { return this.internal.gitRepo; }
+        @property void dotPath(string newEntry) {
+            this.internal.dotPath = newEntry; }
+        @property void gitPath(string newEntry) {
+            this.internal.gitPath = newEntry; }
+        @property void gitRepo(string newEntry) {
+            this.internal.gitRepo = newEntry; }
+
+        this(this)
+        {
+            assert(
+                    this.internal.dotPath != "" &&
+                    this.internal.gitPath != "" &&
+                    this.internal.gitRepo != ""
+                  );
+            this._bInitialized = true;
+        }
+
+        this(string settingsFile)
+        {
+            import std.file : readText, exists;
+            import std.exception : enforce;
+
+            enforce(exists(settingsFile), "No settings seem to be stored. Please run dotfim sync");
+
+            import std.json;
+            auto json = parseJSON(readText(settingsFile));
+
+            // The settings json must contain our entries
+            enforce("dotPath" in json && "gitRepo" in json
+                    && "gitPath" in json,
+                    "Please run dotfim sync");
+
+            this.dotPath = json["dotPath"].str;
+            this.gitPath = json["gitPath"].str;
+            this.gitRepo = json["gitRepo"].str;
+
+            this._bInitialized = true;
+        }
+
+        void save()
+        {
+            assert(this.settingsFile != "");
+
+            import std.file : remove, exists;
+            if (exists(settingsFile)) remove(settingsFile);
+
+            import std.stdio : File;
+            File json = File(settingsFile, "w");
+
+            import vibe.data.json : serializeToJsonString;
+            string toFile = this.internal.serializeToJsonString();
+
+            assert(toFile != ""); // prevents writing empty string on crash
+
+            json.write(toFile);
+            json.close();
+        }
+    }
+}
+

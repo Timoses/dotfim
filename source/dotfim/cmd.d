@@ -4,34 +4,37 @@ import dotfim.dotfim;
 
 class CmdHandler
 {
-    static T CreateInstance(T)(string settingsFile)
+    static T CreateInstance(T)(string settingsFile, T.Options options)
     {
-        return new T(settingsFile);
+        return new T(settingsFile, options);
     }
 
     static void executeCLI(T)(string[] args, string settingsFile)
     {
-        import std.getopt;
+        auto options = T.Options.process(args);
+        if (options.bNeededHelp) return;
 
-        import std.range : empty;
-        if (args.empty)
-            CreateInstance!T(settingsFile).update();
+        // the start index of args to pass to sub (e.g. add, remove, sync);
+        int start = 2;
+
+        if (args.length == 1)
+            CreateInstance!T(settingsFile, options).update();
         else
         {
-            import std.exception : enforce;
-            switch (args[0])
+            switch (args[1])
             {
                 case "add":
-                    CreateInstance!T(settingsFile).add(args[1..$]);
+                    CreateInstance!T(settingsFile, options).add(args[start..$]);
                     break;
                 case "remove":
-                    CreateInstance!T(settingsFile).remove(args[1..$]);
+                    CreateInstance!T(settingsFile, options).remove(args[start..$]);
                     break;
                 case "sync":
-                    auto inst = T.sync(args[1..$], settingsFile);
+                    auto inst = T.sync(args[start..$], settingsFile);
                     if (inst) inst.update();
                     break;
                 default:
+                    CreateInstance!T(settingsFile, options).update();
                     break;
             }
         }
