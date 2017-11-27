@@ -77,14 +77,16 @@ abstract class Section
         void setRemoveCommentIndicator(Part part, string[] mlines)
         {
             import std.range : array;
-            set(part, mlines.map!((string line) {
-                import std.string : indexOf, chompPrefix;
-                return (this.entries[part].isComment
-                        && line.indexOf(commentIndicator) == 0)
-                    // return without commentIndicator
-                    ? line[commentIndicator.length .. $].chompPrefix(" ")
-                    : line; }
-                ).array);
+            set(part,
+                mlines.map!((string line) { // prepend commentIndicator?!
+                    import std.string : indexOf, chompPrefix;
+                    return (this.entries[part].isComment
+                            && line.indexOf(commentIndicator) == 0)
+                        // return without commentIndicator
+                        ? line[commentIndicator.length .. $].chompPrefix(" ")
+                        : line; }
+                    ).array
+                .stripLeft("").stripRight("")); // strip empty lines
         }
 
         // Header
@@ -110,11 +112,15 @@ abstract class Section
     {
         string[] lines;
 
+        import std.algorithm : stripLeft, stripRight;
+
         lines ~= commentIndicator ~ this.sectionSeparator
                     ~ commentIndicator;
         lines ~= build(Part.Header, commentIndicator);
         lines ~= commentIndicator ~ this.metaSeparator;
-        lines ~= build (Part.Content, commentIndicator);
+        lines ~= "";
+        lines ~= build(Part.Content, commentIndicator);
+        lines ~= "";
         lines ~= commentIndicator ~ this.metaSeparator;
         lines ~= build(Part.Footer, commentIndicator);
         lines ~= commentIndicator ~ this.sectionSeparator
@@ -128,9 +134,10 @@ abstract class Section
         string prefix = "";
         if (this.entries[part].isComment)
             prefix = commentIndicator ~ " ";
-        import std.algorithm : map;
+        import std.algorithm : map, stripLeft, stripRight;
         import std.range : array;
-        return this.entries[part].lines.map!((a) => prefix ~ a).array;
+        return this.entries[part].lines.map!((a) => prefix ~ a).array
+            .stripLeft("").stripRight("");
     }
 
     bool identifiesWith(string[] lines)

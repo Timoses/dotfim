@@ -103,9 +103,13 @@ class Dotfile
     {
         this.sectionHandler.generateSections();
 
+        import std.algorithm : stripLeft, stripRight;
+
         this._rawLines.length = 0;
         this._rawLines ~= this._headerLine;
+        this._rawLines ~= "";
         this._rawLines ~= this.sectionHandler.getSectionLines!(GitSection)();
+        this._rawLines ~= "";
         this._rawLines ~= this.sectionHandler.getSectionLines!(LocalSection)();
 
         write(this._rawLines);
