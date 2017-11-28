@@ -26,7 +26,7 @@ dotfim
 
 The best way to use DotfiM is to once run `dotfim` on start-up and run it again before ending the a session (e.g. your work day on the computer).
 
-Dotfim will add two sections to your dotfile:
+DotfiM will add two sections to your dotfile:
 
 1. Git Section:
   This section is synced to your gitRepo. Additions to this section will be synced to your gitRepo and pushed to remote when running `dotfim`. Running `dotfim` on another machine (using the same gitRepo) will sync the local dotfiles.
@@ -51,4 +51,4 @@ Add a dotfile to gitRepo. The file does not need to exist locally, but requires 
 
 #### `dotfim remove <dotfile1> <dotfile2> ... <dotfileN>`
 
-DotfiM will stop managing passed dotfiles and only leave the content of the local section in each, respectively. The corresponding gitfile is also removed and the changes are commited to the gitRepo.
+DotfiM will stop managing dotfiles and only leave the content of the local section in each, respectively. The corresponding gitfile is also removed and the changes are commited to the gitRepo.
