@@ -12,8 +12,6 @@ Do
 dotfim sync <gitRepo>
 ```
 
-and answer where your gitRepo should be and where your dotfiles are located.
-
 Let dotfim manage your first dotfile:
 
 ```
