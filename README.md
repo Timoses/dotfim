@@ -41,6 +41,10 @@ Dotfim will add two sections to your dotfile:
 
 Pull from remote gitRepo, check for changes, update dotfiles and gitfiles and eventually commit and push to remote.
 
+#### `dotfim sync <gitRepo>`
+
+Create a folder for the git repository and run `dotfim`.
+
 #### `dotim add <dotfile1> <dotfile2> ... <dotfilen>`
 
 Add a dotfile to gitRepo. The file does not need to exist locally, but requires to be a based upon the dotfiles path (specified during `dotfim sync` and stored in dotfim.json). Added dotfiles will be managed by Dotfim when running other commands (e.g. `dotfim`)
