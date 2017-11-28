@@ -12,7 +12,7 @@ Do
 dotfim sync <gitRepo>
 ```
 
-Let dotfim manage your first dotfile:
+Let DotfiM manage your first dotfile:
 
 ```
 dotfim add ~/.myDotfile
@@ -45,10 +45,10 @@ Pull from remote gitRepo, check for changes, update dotfiles and gitfiles and ev
 
 Create a folder for the git repository and run `dotfim`.
 
-#### `dotim add <dotfile1> <dotfile2> ... <dotfilen>`
+#### `dotim add <dotfile1> <dotfile2> ... <dotfileN>`
 
 Add a dotfile to gitRepo. The file does not need to exist locally, but requires to be a based upon the dotfiles path (specified during `dotfim sync` and stored in dotfim.json). Added dotfiles will be managed by Dotfim when running other commands (e.g. `dotfim`)
 
-#### `dotfim remove <dotfile1> <dotfile2> ... <dotfilen>`
+#### `dotfim remove <dotfile1> <dotfile2> ... <dotfileN>`
 
 DotfiM will stop managing passed dotfiles and only leave the content of the local section in each, respectively. The corresponding gitfile is also removed and the changes are commited to the gitRepo.
