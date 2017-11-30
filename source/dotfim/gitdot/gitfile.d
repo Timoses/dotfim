@@ -44,10 +44,11 @@ class Gitfile
             return split[0].strip;
     }
 
-    void write()
+    void write(bool bLeaveHeader = false)
     {
         this._rawLines.length = 0;
-        this._rawLines ~= _headerLine;
+        if (!bLeaveHeader)
+            this._rawLines ~= _headerLine;
         this._rawLines ~= _gitLines;
 
         import std.stdio : File;

@@ -354,7 +354,9 @@ class DotfileManager
     {
         update();
 
-        string removedFiles;
+        writeln("------------------------");
+
+        string unmanagedFiles;
 
         foreach (file; files)
         {
@@ -366,10 +368,13 @@ class DotfileManager
                 continue;
             }
 
-            // remove git
-            git.execute("rm", found.gitfile.file);
+            // remove header from gitFile
+            found.gitfile.write(true);
+
+            git.execute("add", found.gitfile.file);
+
             import std.range : array;
-            removedFiles ~= asRelativePath(found.gitfile.file,
+            unmanagedFiles ~= asRelativePath(found.gitfile.file,
                         this.settings.gitPath).array ~ "\n";
 
             // write only local section to dotfile
@@ -382,17 +387,19 @@ class DotfileManager
             this.gitdots = this.gitdots.remove!((a) => a == found);
         }
 
-        if (removedFiles != "")
+        if (unmanagedFiles != "")
         {
-            this.commitAndPush("DotfiM Remove: \n\n" ~ removedFiles);
+            this.commitAndPush("DotfiM Unmanage: \n\n" ~ unmanagedFiles);
 
-            writeln("Removed:");
+            writeln("Unmanaged:");
             import std.string : splitLines, join;
             import std.algorithm : map;
-            writeln(removedFiles
+            writeln(unmanagedFiles
                         .splitLines
                         .map!((e) => "\t" ~ e)
                         .join("\n"));
+
+            writeln("------------------------");
 
             update();
         }
