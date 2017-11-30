@@ -294,14 +294,14 @@ class DotfileManager
         {
             import std.path;
             import std.algorithm : canFind;
-            string absFile = asAbsolutePath(file).array;
-            if (!absFile.canFind(this.settings.dotPath))
+
+            if (!file.canFind(this.settings.dotPath))
             {
                 stderr.writeln("File ", file, " does not reside within the dotfile path (", this.settings.dotPath, ")!");
                 continue;
             }
 
-            if (findGitDot(absFile))
+            if (findGitDot(file))
             {
                 stderr.writeln("File ", file, " is already managed by DotfiM");
                 continue;

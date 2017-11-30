@@ -41,6 +41,7 @@ class GitDot
 
         string relDotFile = asRelativePath(dotfile, dotPath).array;
 
+        // assert dotFile/dotPath begins with "."
         assert(relDotFile != "");
         assert(relDotFile[0] == '.',
                 "Dotfiles are hidden... (begin with \".\")");
@@ -56,12 +57,30 @@ class GitDot
 
         string gitFile = buildPath(gitPath, relDotFile);
 
-        assert(!exists(gitFile), "The gitFile exists already; could not create");
-
         import std.stdio : File;
-        File newGit = File(gitFile, "w");
-        newGit.writeln(commentIndicator ~ " " ~ fileHeader);
-        newGit.close();
+        // if it exists prepend {commentIndicator} fileHeader
+        if(exists(gitFile))
+        {
+            import std.conv : to;
+            File fgit = File(gitFile, "a+");
+            string[] gitLines;
+            foreach (line; fgit.byLine)
+                gitLines ~= line.to!string;
+            import std.file : remove;
+            fgit.close();
+            remove(gitFile);
+            fgit.open(gitFile, "w");
+            fgit.writeln(commentIndicator ~ " " ~ fileHeader);
+            foreach(line; gitLines)
+                fgit.writeln(line);
+            fgit.close();
+        }
+        else // else create new file with {commentIndicator} fileHeader
+        {
+            File newGit = File(gitFile, "w");
+            newGit.writeln(commentIndicator ~ " " ~ fileHeader);
+            newGit.close();
+        }
 
         return new GitDot(gitFile, dotfile);
     }
