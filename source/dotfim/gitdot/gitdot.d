@@ -3,6 +3,9 @@ module dotfim.gitdot.gitdot;
 import dotfim.gitdot.gitfile;
 import dotfim.gitdot.dotfile;
 
+class NotManagedException : Exception
+{ this(){super("Gitfile is not managed");} }
+
 class GitDot
 {
     Gitfile gitfile;
@@ -21,8 +24,10 @@ class GitDot
 
         import std.string : empty;
         this.commentIndicator = gitfile.retrieveCommentIndicator(fileHeader);
-        import std.exception : enforce;
-        enforce(!this.commentIndicator.empty, "Could not retrieve commentIndicator from gitfile. First line needs to be \"{CommentIndicator} " ~ fileHeader ~ "\"");
+
+        // throw if gitFile is missing the {commentIndicator} fileHeader
+        if (this.commentIndicator.empty)
+            throw new NotManagedException();
 
         this.dotfile =
             new Dotfile(dfilePath, this.commentIndicator, createHeaderLine());

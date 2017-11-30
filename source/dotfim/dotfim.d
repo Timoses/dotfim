@@ -74,6 +74,8 @@ class DotfileManager
                         this.gitdots ~= new GitDot(name,
                                 buildPath(this.settings.dotPath, relName));
                     }
+                    catch (NotManagedException e)
+                    { }
                     catch (Exception e) {
                         stderr.writeln(relName, " - Error: ", e.message);
                     }
