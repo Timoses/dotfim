@@ -50,6 +50,11 @@ class DotfileManager
 
         string gitHash = this.git.hash;
 
+        // If synced first time ask if unmanaged files should be
+        // turned to managed files
+        bool bManageAllGitFiles;
+        string[] filesToManage;
+
         void processDirectory(string dir, int depth = 0)
         {
             import std.file;
@@ -75,7 +80,21 @@ class DotfileManager
                                 buildPath(this.settings.dotPath, relName));
                     }
                     catch (NotManagedException e)
-                    { }
+                    {
+                        if (bManageAllGitFiles)
+                        {
+                            filesToManage ~= name;
+                        }
+                        else if (this.settings.isFirstSync
+                                 && askContinue(
+                                "DotfiM can start managing all existing files in your git repository now.\n You may as well add them individually later using the \"add\" command.\nManage all files now? (y/n): ", "y"))
+                        {
+                            filesToManage ~= name;
+                            bManageAllGitFiles = true;
+                        }
+                        else // stop asking ...
+                            this.settings.bFirstSync = false;
+                    }
                     catch (Exception e) {
                         stderr.writeln(relName, " - Error: ", e.message);
                     }
@@ -85,6 +104,9 @@ class DotfileManager
 
         // load all GitDots from gitFiles
         processDirectory(this.settings.gitPath);
+
+        if (bManageAllGitFiles && filesToManage.length > 0)
+            this.add(filesToManage);
     }
 
     void prepareGitBranch()
@@ -295,9 +317,14 @@ class DotfileManager
             import std.path;
             import std.algorithm : canFind;
 
-            if (!file.canFind(this.settings.dotPath))
+            bool bIsGitFile =
+                file.canFind(this.settings.gitPath);
+            bool bIsDotFile = bIsGitFile ? false
+                : file.canFind(this.settings.dotPath);
+
+            if (!(bIsGitFile || bIsDotFile))
             {
-                stderr.writeln("File ", file, " does not reside within the dotfile path (", this.settings.dotPath, ")!");
+                stderr.writeln("File ", file, " does neither reside within the dotfile path (", this.settings.dotPath, ") nor git path (", this.settings.gitPath, ")!\n\tSkipping");
                 continue;
             }
 
@@ -307,8 +334,14 @@ class DotfileManager
                 continue;
             }
 
+            string relFile = asRelativePath(file,
+                    bIsGitFile ? this.settings.gitPath :
+                    bIsDotFile ? this.settings.dotPath : "").array;
+
+            assert(relFile != "");
+
             write("Please specify the comment indicator for file ",
-                    asRelativePath(file, this.settings.dotPath),
+                    relFile,
                     ": ");
             import std.string : chomp;
             string commentIndicator = readln().chomp();
@@ -316,7 +349,7 @@ class DotfileManager
             try
             {
                 createdGitDots ~= GitDot.create(
-                                          file,
+                                          relFile,
                                           commentIndicator,
                                           this.settings.gitPath,
                                           this.settings.dotPath);
@@ -420,16 +453,15 @@ class DotfileManager
         try
         {
             settings = Settings(settingsFile);
-            writeln("DotfiM is already set up to sync with the following settings:");
-            write("\t");
-            writeln(settings.internal);
-            write("Syncing will delete old setup. Continue? (y/n): ");
 
-            char answer;
-            readf!"%c"(answer);
+            import std.conv : to;
+            string question =
+                "DotfiM is already set up to sync with the following settings:\n"
+                ~ "\t" ~ settings.internal.to!string ~ "\n"
+                ~ "Syncing will delete old setup. Continue? (y/n): ";
 
-            if (answer != 'y') return null;
-            readln(); // flush the 'ENTER'
+            if (!askContinue(question, "y"))
+                return null;
 
             // keep current path setup
             dotPath = settings.dotPath;
@@ -474,8 +506,9 @@ class DotfileManager
         string[] pathsCreated;
         scope(failure)
         {
+            import std.file : rmdirRecurse;
             foreach (path; pathsCreated)
-                rmdir(path);
+                rmdirRecurse(path);
         }
         // Ask user for desired locations
         dotPath = askPath("Your home path", dotPath);
@@ -488,7 +521,15 @@ class DotfileManager
         gitPath = askPath("DotfiM Git Repository Path", gitPath);
 
         import std.file : rmdirRecurse;
-        if (exists(gitPath)) rmdirRecurse(gitPath);
+        // ask if an existing gitPath should be deleted
+        if (exists(gitPath))
+        {
+            if (!askContinue("The given git repository path already exists!\n\t!!! Continuing will delete the git repository folder !!!"
+                        ~ "\nContinue? (y/n): ", "y"))
+                    return null;
+
+            rmdirRecurse(gitPath);
+        }
 
         mkdir(gitPath);
         pathsCreated ~= gitPath;
@@ -498,9 +539,12 @@ class DotfileManager
         enforce(res.status == 0, "Could not clone the repository " ~
                 gitRepo ~ "\n Git Error: " ~ res.output);
 
+        settings.bFirstSync = true;
+
         settings.dotPath = dotPath;
         settings.gitPath = gitPath;
         settings.gitRepo = repoURI[0];
+
         settings.settingsFile = settingsFile;
 
         return new DotfileManager(settings);
@@ -544,11 +588,23 @@ class DotfileManager
         import std.algorithm : canFind;
         foreach (ref gitdot; this.gitdots)
         {
-            if (gitdot.dotfile.file == file)
+            if (gitdot.dotfile.file == file
+                || gitdot.gitfile.file == file)
                 return gitdot;
         }
 
         return null;
+    }
+
+    static bool askContinue(string question, string yes)
+    {
+            write(question);
+
+            string answer;
+            import std.string : chomp;
+            answer = readln().chomp();
+
+            return answer != yes ? false : true;
     }
 }
 
@@ -584,6 +640,12 @@ mixin template SettingsTemplate()
 {
     struct Settings
     {
+        // set when this is the first time the git Repo is synced
+        private bool _bFirstSync;
+        @property bool isFirstSync() { return this._bFirstSync; }
+        @property void bFirstSync(bool firstSync) {
+            this._bFirstSync = firstSync; }
+
         private bool _bInitialized;
         @property bool isInitialized() { return this._bInitialized; }
 

@@ -33,21 +33,20 @@ class GitDot
             new Dotfile(dfilePath, this.commentIndicator, createHeaderLine());
     }
 
-    // Accepts dotfile (relative to gitPath) and prepares the gitfile
-    static GitDot create(string dotfile, string commentIndicator, string gitPath, string dotPath)
+    // Accepts relFile which is the dotfile or gitfile relative to its
+    // dotPath or gitPath, respectively
+    static GitDot create(string relFile, string commentIndicator, string gitPath, string dotPath)
     {
         import std.path, std.file;
         import std.range : array;
 
-        string relDotFile = asRelativePath(dotfile, dotPath).array;
-
         // assert dotFile/dotPath begins with "."
-        assert(relDotFile != "");
-        assert(relDotFile[0] == '.',
+        assert(relFile != "");
+        assert(relFile[0] == '.',
                 "Dotfiles are hidden... (begin with \".\")");
 
         // create gitFolder if dotfile resides in one
-        string folder = relDotFile.dirName;
+        string folder = relFile.dirName;
         if (folder != ".")
         {
             string newGitPath = buildPath(gitPath, folder);
@@ -55,7 +54,7 @@ class GitDot
                 mkdirRecurse(newGitPath);
         }
 
-        string gitFile = buildPath(gitPath, relDotFile);
+        string gitFile = buildPath(gitPath, relFile);
 
         import std.stdio : File;
         // if it exists prepend {commentIndicator} fileHeader
@@ -82,7 +81,9 @@ class GitDot
             newGit.close();
         }
 
-        return new GitDot(gitFile, dotfile);
+        string dotFile = buildPath(dotPath, relFile);
+
+        return new GitDot(gitFile, dotFile);
     }
 
     string createHeaderLine()
