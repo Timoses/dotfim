@@ -33,6 +33,10 @@ class CmdHandler
                     auto inst = T.sync(args[start..$], settingsFile);
                     if (inst) inst.update();
                     break;
+                case "list":
+                case "ls":
+                    CreateInstance!T(settingsFile, options).list();
+                    break;
                 default:
                     CreateInstance!T(settingsFile, options).update();
                     break;

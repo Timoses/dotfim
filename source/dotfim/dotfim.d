@@ -504,6 +504,16 @@ class DotfileManager
         return new DotfileManager(settings);
     }
 
+    void list()
+    {
+        writeln("Managed files:");
+        foreach(gitdot; this.gitdots)
+        {
+            import std.range : array;
+            writeln("\t" ~ asRelativePath(gitdot.gitfile.file, this.settings.gitPath).array);
+        }
+    }
+
     void commitAndPush(string commitMsg)
     {
         this.git.commit(commitMsg);
