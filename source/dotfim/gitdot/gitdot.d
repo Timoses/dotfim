@@ -28,21 +28,37 @@ class GitDot
             new Dotfile(dfilePath, this.commentIndicator, createHeaderLine());
     }
 
-    static GitDot create(string dotname, string commentIndicator, string gitPath, string dotPath)
+    // Accepts dotfile (relative to gitPath) and prepares the gitfile
+    static GitDot create(string dotfile, string commentIndicator, string gitPath, string dotPath)
     {
         import std.path, std.file;
-        assert(dotname.dirName == ".", "Only accepts file name without path");
+        import std.range : array;
 
-        string gitFile = buildPath(gitPath, dotname);
+        string relDotFile = asRelativePath(dotfile, dotPath).array;
 
-        assert(!exists(gitFile));
+        assert(relDotFile != "");
+        assert(relDotFile[0] == '.',
+                "Dotfiles are hidden... (begin with \".\")");
+
+        // create gitFolder if dotfile resides in one
+        string folder = relDotFile.dirName;
+        if (folder != ".")
+        {
+            string newGitPath = buildPath(gitPath, folder);
+            if (!exists(newGitPath))
+                mkdirRecurse(newGitPath);
+        }
+
+        string gitFile = buildPath(gitPath, relDotFile);
+
+        assert(!exists(gitFile), "The gitFile exists already; could not create");
 
         import std.stdio : File;
         File newGit = File(gitFile, "w");
         newGit.writeln(commentIndicator ~ " " ~ fileHeader);
         newGit.close();
 
-        return new GitDot(gitFile, buildPath(dotPath, dotname));
+        return new GitDot(gitFile, dotfile);
     }
 
     string createHeaderLine()

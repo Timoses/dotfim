@@ -23,7 +23,8 @@ class DotfileManager
     // Contains GitDots of actively managed dotfiles
     GitDot[] gitdots;
 
-    static string[] excludedDotFiles = [".git", ".gitignore"];
+    // paths or files relative to gitPath that should be excluded
+    static string[] excludedDots = [".git", ".gitignore", "cheatSheets"];
 
     this(string settingsFile, Options options)
     {
@@ -49,24 +50,39 @@ class DotfileManager
 
         string gitHash = this.git.hash;
 
-        import std.file;
-        // Create a GitDot for every dotfile in gitPath
-        foreach (string name; dirEntries(this.settings.gitPath, ".*", SpanMode.shallow))
+        void processDirectory(string dir, int depth = 0)
         {
-            import std.algorithm : canFind;
-            if (this.excludedDotFiles.canFind(baseName(name)))
-                continue;
+            import std.file;
 
-            try {
-                import std.path : buildPath;
-                this.gitdots ~= new GitDot(
-                        name,
-                        buildPath(this.settings.dotPath, name.baseName));
-            }
-            catch (Exception e) {
-                stderr.writeln(name.baseName, " - Error: ", e.message);
+
+            foreach (string name; dirEntries(dir, SpanMode.shallow))
+            {
+                import std.algorithm : canFind;
+                import std.range : array;
+
+                string relName = name.asRelativePath(this.settings.gitPath).array;
+                // ignore excluded files or folders
+                if (this.excludedDots.canFind(relName))
+                    continue;
+
+                if (name.isDir)
+                    processDirectory(name);
+                else
+                {
+                    try {
+                        import std.path : buildPath;
+                        this.gitdots ~= new GitDot(name,
+                                buildPath(this.settings.dotPath, relName));
+                    }
+                    catch (Exception e) {
+                        stderr.writeln(relName, " - Error: ", e.message);
+                    }
+                }
             }
         }
+
+        // load all GitDots from gitFiles
+        processDirectory(this.settings.gitPath);
     }
 
     void prepareGitBranch()
@@ -161,7 +177,9 @@ class DotfileManager
                     {
                         // TODO: Merging is currently not allowed
                         // (e.g. git merge-file)
-                        throw new Exception("Can not update/merge changes from dotfile with old git commit hash!");
+                        throw new Exception(
+                                gitdot.dotfile.file ~
+                                " - Can not update/merge changes from dotfile with old git commit hash!");
                     }
                 }
                 else // same git hash
@@ -260,9 +278,19 @@ class DotfileManager
 
         GitDot[] createdGitDots;
 
+        import std.algorithm : map;
+        import std.path : asNormalizedPath, asAbsolutePath;
+        import std.range : array;
+        import std.conv : to;
+
+        // sanitize paths
+        dotfiles = dotfiles.map!((dotfile) =>
+                asNormalizedPath(asAbsolutePath(dotfile).array).array
+                .to!string).array;
+
         foreach (file; dotfiles)
         {
-            import std.path, std.range;
+            import std.path;
             import std.algorithm : canFind;
             string absFile = asAbsolutePath(file).array;
             if (!absFile.canFind(this.settings.dotPath))
@@ -285,10 +313,11 @@ class DotfileManager
 
             try
             {
-                createdGitDots ~= GitDot.create(file.baseName,
-                                              commentIndicator,
-                                              this.settings.gitPath,
-                                              this.settings.dotPath);
+                createdGitDots ~= GitDot.create(
+                                          file,
+                                          commentIndicator,
+                                          this.settings.gitPath,
+                                          this.settings.dotPath);
             }
             catch (Exception e)
             {
@@ -303,7 +332,8 @@ class DotfileManager
             foreach (gitdot; createdGitDots)
             {
                 this.git.execute("add", gitdot.gitfile.file);
-                addedFiles ~= gitdot.gitfile.file.baseName ~ "\n";
+                addedFiles ~= asRelativePath(gitdot.gitfile.file,
+                        this.settings.gitPath).array ~ "\n";
             }
 
             import std.algorithm : uniq;
@@ -338,8 +368,11 @@ class DotfileManager
 
             // remove git
             git.execute("rm", found.gitfile.file);
-            removedFiles ~= baseName(found.gitfile.file) ~ "\n";
+            import std.range : array;
+            removedFiles ~= asRelativePath(found.gitfile.file,
+                        this.settings.gitPath).array ~ "\n";
 
+            // write only local section to dotfile
             with (found.dotfile)
             {
                 write(localLines);
