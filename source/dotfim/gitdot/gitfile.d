@@ -26,8 +26,11 @@ class Gitfile
         git.close();
 
         import std.range : take, drop;
-        this._headerLine = this._rawLines.take(1)[0];
-        this._gitLines = this._rawLines.drop(1);
+        if (this._rawLines.length > 0)
+        {
+            this._headerLine = this._rawLines.take(1)[0];
+            this._gitLines = this._rawLines.drop(1);
+        }
     }
 
     // retrieves commendIndicator from headerLine
