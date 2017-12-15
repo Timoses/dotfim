@@ -60,43 +60,46 @@ class DotfileManager
             import std.file;
 
 
-            foreach (string name; dirEntries(dir, SpanMode.shallow))
+            foreach (string gitFileName; dirEntries(dir, SpanMode.shallow))
             {
                 import std.algorithm : canFind;
                 import std.range : array;
 
-                string relName = name.asRelativePath(this.settings.gitPath).array;
+                string relFilePath = gitFileName.asRelativePath(this.settings.gitPath).array;
                 // ignore excluded files or folders
-                if (this.excludedDots.canFind(relName))
+                if (this.excludedDots.canFind(relFilePath))
                     continue;
 
-                if (name.isDir)
-                    processDirectory(name);
+                if (gitFileName.isDir)
+                    processDirectory(gitFileName);
                 else
                 {
                     try {
                         import std.path : buildPath;
-                        this.gitdots ~= new GitDot(name,
-                                buildPath(this.settings.dotPath, relName));
+
+                        string dotFileName = buildPath(this.settings.dotPath, relFilePath);
+
+
+                        this.gitdots ~= new GitDot(gitFileName, dotFileName);
                     }
                     catch (NotManagedException e)
                     {
                         if (bManageAllGitFiles)
                         {
-                            filesToManage ~= name;
+                            filesToManage ~= gitFileName;
                         }
                         else if (this.settings.isFirstSync
                                  && askContinue(
                                 "DotfiM can start managing all existing files in your git repository now.\n You may as well add them individually later using the \"add\" command.\nManage all files now? (y/n): ", "y"))
                         {
-                            filesToManage ~= name;
+                            filesToManage ~= gitFileName;
                             bManageAllGitFiles = true;
                         }
                         else // stop asking ...
                             this.settings.bFirstSync = false;
                     }
                     catch (Exception e) {
-                        stderr.writeln(relName, " - Error: ", e.msg);
+                        stderr.writeln(relFilePath, " - Error: ", e.msg);
                     }
                 }
             }
