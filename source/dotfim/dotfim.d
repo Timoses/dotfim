@@ -79,6 +79,9 @@ class DotfileManager
 
                         string dotFileName = buildPath(this.settings.dotPath, relFilePath);
 
+                        // create dotfile's path if it doesn't exist yet
+                        if (!dotFileName.dirName.exists)
+                            mkdirRecurse(dotFileName.dirName);
 
                         this.gitdots ~= new GitDot(gitFileName, dotFileName);
                     }
