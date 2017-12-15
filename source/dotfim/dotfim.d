@@ -96,7 +96,7 @@ class DotfileManager
                             this.settings.bFirstSync = false;
                     }
                     catch (Exception e) {
-                        stderr.writeln(relName, " - Error: ", e.message);
+                        stderr.writeln(relName, " - Error: ", e.msg);
                     }
                 }
             }
