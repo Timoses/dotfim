@@ -32,13 +32,17 @@ class Dotfile
         this.file = file;
         this._headerLine = managedHeader;
 
-        {
+        try {
             // Read content of home dotfile
-            File home = File(this.file, "a+");
+            File home = File(this.file, "r");
             foreach(line; home.byLine)
+            {
                 this._rawLines ~= line.to!string;
+            }
             home.close;
         }
+        catch (Exception e)
+        { }
 
         this.sectionHandler = new SectionHandler(commentIndicator);
 
@@ -119,8 +123,6 @@ class Dotfile
     void write(string[] lines)
     {
         // replace file with new content
-        import std.file;
-        std.file.remove(this.file);
         File home = File(this.file, "w");
         foreach (line; lines)
             home.writeln(line);
