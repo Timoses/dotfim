@@ -1,11 +1,11 @@
 {
 	"name": "dotfim",
 	"authors": [
-		"timoses"
+		"Timo Funke"
 	],
 	"description": "DotfiM - A Dotfile Manager",
-	"copyright": "Copyright © 2017, timoses",
-	"license": "proprietary",
+	"copyright": "Copyright © 207-2018, Timo Funke",
+	"license": "MIT",
 
     "dependencies": {
         "vibe-d:data": "~>0.8.2-rc.1"
