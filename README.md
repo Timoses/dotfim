@@ -4,6 +4,20 @@ DotfiM manages your git repository and syncs it with your local dotfiles.
 The advantage is that you can make live changes to your dotfiles which will be synced automatically to your git repository after running `dotfim`.
 
 
+## Installation
+
+### Build
+
+#### Requirements
+- D compiler (https://dlang.org/download.html)
+- DUB "Package and build management system for D" (http://code.dlang.org/download)
+
+```
+git clone git@github.com:Timoses/dotfim.git
+cd dotfim
+dub build
+```
+
 ## Usage
 
 Do
