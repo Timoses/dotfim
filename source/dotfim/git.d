@@ -75,12 +75,17 @@ class Git
     {
        import std.process : execute;
        import std.exception : enforce;
-       auto res = execute(["git", "-C", location] ~ cmds);
+       import std.string : empty;
+
+       auto pre = location.empty ? ["git"] : ["git", "-C", location];
+       auto res = execute(pre ~ cmds);
+
        import std.format : format;
        enforce(emode == ErrorMode.Ignore || res.status == 0, format(
                    "Error while executing git %-(%s %)\n Exited with: %s",
                    cmds,
                    res.output));
+
        return res;
     }
 }
