@@ -229,30 +229,44 @@ class DotfileManager
         if (gfUpdatees.length > 0)
         {
             string changedFiles;
-            foreach (gitdot; gfUpdatees)
+            try
             {
-                gitdot.gitfile.gitLines = gitdot.dotfile.gitLines;
-                gitdot.gitfile.write();
-                this.git.execute("add", gitdot.gitfile.file);
-                import std.conv : to;
-                changedFiles ~= asRelativePath(gitdot.gitfile.file,
-                                    this.settings.gitPath).to!string
-                                ~ "\n";
+                foreach (gitdot; gfUpdatees)
+                {
+                    gitdot.gitfile.gitLines = gitdot.dotfile.gitLines;
+                    gitdot.gitfile.write();
+                    this.git.execute("add", gitdot.gitfile.file);
+                    import std.conv : to;
+                    changedFiles ~= asRelativePath(gitdot.gitfile.file,
+                                        this.settings.gitPath).to!string
+                                    ~ "\n";
+                }
+
+                import std.string : chomp;
+                changedFiles = changedFiles.chomp;
+
+                this.commitAndPush("DotfiM Update: \n\n" ~ changedFiles);
+            }
+            catch (Exception e)
+            {
+                writeln(e.msg);
+                this.git.execute(["reset", "--hard"]);
+                writeln("Error occured while updating the git repository. Please fix issues and try again.");
+                writeln("Stopping update.");
+                return;
             }
 
-            import std.string : chomp;
-            changedFiles = changedFiles.chomp;
-
-            this.commitAndPush("DotfiM Update: \n\n" ~ changedFiles);
-            curGitHash = this.git.hash;
-
-            writeln("Git repo files updated:");
-            import std.algorithm : map;
-            import std.string : splitLines, join;
-            writeln(changedFiles
-                    .splitLines
-                    .map!((e) => "\t" ~ e)
-                    .join("\n"));
+            scope(success)
+            {
+                curGitHash = this.git.hash;
+                writeln("Git repo files updated:");
+                import std.algorithm : map;
+                import std.string : splitLines, join;
+                writeln(changedFiles
+                        .splitLines
+                        .map!((e) => "\t" ~ e)
+                        .join("\n"));
+            }
         }
 
         // 3: Update dotfiles
