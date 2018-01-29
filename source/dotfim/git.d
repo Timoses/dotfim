@@ -65,13 +65,13 @@ class Git
         return execute("rev-parse", "origin/dotfim").output.chomp;
     }
 
-    auto execute(string[] cmds ...)
+    enum ErrorMode { Throw, Ignore };
+    auto execute(string file = __FILE__, int line = __LINE__)(string[] cmds ...)
     {
-        return Git.staticExecute(this.dir, cmds);
+        return Git.staticExecute!(ErrorMode.Throw, file, line)(this.dir, cmds);
     }
 
-    enum ErrorMode { Throw, Ignore };
-    static auto staticExecute(ErrorMode emode = ErrorMode.Throw)(string location, string[] cmds ...)
+    static auto staticExecute(ErrorMode emode = ErrorMode.Throw, string file = __FILE__, int line = __LINE__)(string location, string[] cmds ...)
     {
        import std.process : execute;
        import std.exception : enforce;
@@ -82,7 +82,8 @@ class Git
 
        import std.format : format;
        enforce(emode == ErrorMode.Ignore || res.status == 0, format(
-                   "Error while executing git %-(%s %)\n Exited with: %s",
+                   "%s (%d): Error while executing git %-(%s %)\n Exited with: %s",
+                   file, line,
                    cmds,
                    res.output));
 
