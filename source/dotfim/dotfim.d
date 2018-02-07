@@ -182,7 +182,8 @@ class DotfileManager
             else
             {
                 string dotGitHash = gitdot.dotfile.gitHash;
-                assert(dotGitHash != "", "dotfile's Git Section commit hash can not be empty");
+                import std.exception : enforce;
+                enforce(dotGitHash != "", "dotfile's Git Section commit hash can not be empty");
                 if (dotGitHash != curGitHash)
                 {
                     // dotfile will require rewrite
