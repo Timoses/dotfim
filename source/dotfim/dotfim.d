@@ -163,14 +163,48 @@ class DotfileManager
         }
     }
 
+    /**
+     * Update:
+     *  Update will proceed as follows:
+     *   1. Collect files:
+     *        - dfUpdatees: remote update available for dotfile
+     *              local git hash != remote git hash
+     *              && locally no changes were applied to dotfile
+     *        - gfUpdatees: local update available for gitfile
+     *              local git hash == remote git hash
+     *        - divergees: local and remote changes! requires merge!
+     *              local git hash != remote git hash
+     *              && local changes were applied to dotfile
+     *   2. Merge divergees:
+     *        Dotfiles:
+     *           no actions
+     *        Gitfiles:
+     *           Creates "merge" branch based on common base commit,
+     *           commits local changes (dotfiles
+     *           content) to it and merges it with remote branch.
+     *           Successful: Apply merged branch as new base branch
+     *              -> NEW GIT HASH -> all dotfiles require update
+     *           Unsuccessful: Abort! Delete "merge" branch.
+     *   3. Update gitfiles gfUpdatees
+     *        Copy content of updated dotfiles to gitfiles
+     *        and commit.
+     *              -> NEW GIT HASH -> all dotfiles require update
+     *        Note: gfUpdatees should be empty when merge was required
+     *              since in that case remote and local git hash differed.
+     *   4. Update dotfiles:
+     *      If git hashs differed write all changes to dotfiles (also
+     *      updating dotfile hashes)
+     *
+     */
     void update()
     {
         string curGitHash = this.git.hash;
 
         GitDot[] dfUpdatees;
         GitDot[] gfUpdatees;
+        GitDot[] divergees;
 
-        // 1: Update Gitfiles
+        // 1: Collect files that need update
         foreach (gitdot; this.gitdots)
         {
             if (!gitdot.dotfile.managed)
@@ -206,11 +240,9 @@ class DotfileManager
                     // and check for custom updates
                     if (oldGitLines != gitdot.dotfile.gitLines)
                     {
-                        // TODO: Merging is currently not allowed
-                        // (e.g. git merge-file)
-                        throw new Exception(
-                                gitdot.dotfile.file ~
-                                " - Can not update/merge changes from dotfile with old git commit hash!");
+                        import std.algorithm : uniq;
+                        import std.array;
+                        divergees = uniq(divergees ~ gitdot).array;
                     }
                 }
                 else // same git hash
@@ -226,7 +258,87 @@ class DotfileManager
             }
         }
 
-        // 2: Commit changes to gitfiles, if any
+        // 2: Merge
+        if (divergees.length > 0)
+        {
+            import std.algorithm : map;
+            import std.array : join;
+            import std.conv : to;
+            if (!askContinue("The following files have diverged:\n"
+                        ~ divergees.map!((e) => asRelativePath(
+                                e.gitfile.file,
+                                this.settings.gitPath).to!string)
+                            .join("\n")
+                        ~ "\nWould you like to attempt merging? (y/n): ", "y"))
+                // stop!
+                throw new Exception("User aborted merge!");
+
+            // common base commit should be dotfile hash
+            // TODO: support multiple different dotfile hashes
+            //       (however that might happen) -> multiple merge
+            //       branches and merge commits
+            string commonBaseHash = divergees[0].dotfile.gitHash;
+            foreach (gitdot; divergees)
+            {
+                import std.exception : enforce;
+                enforce(gitdot.dotfile.gitHash == commonBaseHash,
+                        "Found differing git hashes in divergent "
+                        ~ "dotfiles. Currently only one merge base "
+                        ~ "base is supported! Aborting Merge.");
+            }
+
+            immutable string mergeBranchName = "merge-" ~ dotfimGitBranch;
+            // commit dotfiles to merge branch
+            this.git.execute(["checkout", "-b",
+                                mergeBranchName,
+                                commonBaseHash]);
+            // write dotfiles updates to gitfiles
+            foreach (gitdot; divergees)
+            {
+                gitdot.gitfile.gitLines = gitdot.dotfile.gitLines;
+                gitdot.gitfile.write();
+                this.git.execute("add", gitdot.gitfile.file);
+            }
+            // commit these changes
+            this.git.execute(["commit", "-m", "Diverged commit"]);
+
+            // Try merging
+            if (merge(mergeBranchName, dotfimGitBranch, this.git)
+                && askContinue("The merge appears successful.\n" ~
+                        "Would you like to take over the changes? (y/n): ",
+                        "y"))
+            {
+                // take over merged branch
+                git.execute("rebase", mergeBranchName, dotfimGitBranch);
+                git.execute("branch", "-d", mergeBranchName);
+
+                string mergedFiles;
+                foreach (div; divergees)
+                {
+                    mergedFiles ~= asRelativePath(div.gitfile.file,
+                                    this.settings.gitPath).to!string
+                                ~ "\n";
+                }
+                // update commit message (ammend)
+                git.commit("Merged update\n\n" ~ mergedFiles,
+                                    true);
+
+                curGitHash = git.hash;
+
+                // read merged contents from gitfiles
+                foreach (gitdot; divergees)
+                    gitdot.gitfile.read();
+            }
+            else
+            {
+                git.execute(["checkout", dotfimGitBranch]);
+                git.execute("branch", "-D", mergeBranchName);
+
+                throw new Exception("Merge failed... Aborted dotfim update!");
+            }
+        }
+
+        // 3: Commit changes to gitfiles, if any
         if (gfUpdatees.length > 0)
         {
             string changedFiles;
@@ -270,9 +382,11 @@ class DotfileManager
             }
         }
 
-        // 3: Update dotfiles
+        // 4: Update dotfiles
         // if commits done or if oldGitHash found
-        if (gfUpdatees.length == 0 && dfUpdatees.length == 0)
+        if (gfUpdatees.length == 0
+                && dfUpdatees.length == 0
+                && divergees.length == 0)
         {
             writeln("Everything's already up to date");
         }
@@ -304,12 +418,143 @@ class DotfileManager
 
             // new git hash -> update all dotfiles in order
             // to renew their hashes
-            if (gfUpdatees.length > 0)
+            if (gfUpdatees.length > 0 || divergees.length > 0)
             {
                 dfUpdate(this.gitdots);
             }
             else
                 dfUpdate(dfUpdatees);
+        }
+    }
+
+    // Merges commits from otherBranch and mergeBranch into mergeBranch
+    // returns:
+    //  true - if successfully merged into mergeBranch
+    //  false - if merging failed
+    static bool merge(string mergeBranch, string otherBranch, Git git)
+    {
+        git.execute("checkout", mergeBranch);
+        string divergedHash = git.hash;
+
+        auto res = git.execute!(git.ErrorMode.Ignore)(["merge", otherBranch]);
+
+        import std.string : splitLines;
+        import std.algorithm : map;
+        import std.array : join;
+        writeln("|-- Git Merge ----");
+        writeln(res.output.splitLines().map!((e) => "| " ~ e).join("\n"));
+        writeln("|-----------------");
+
+        if (res.status > 0)
+        { // git conflict
+            writeln("| Git merge seems to have been unsuccessful.");
+            writeln("| Attempting git merge tool");
+            writeln("|-- Git Merge Tool ----");
+            import std.process : spawnProcess, wait;
+            auto pid = spawnProcess(["git", "-C", git.dir, "mergetool"]);
+            wait(pid);
+            writeln("|----------------------");
+
+            // git merge tool successful?
+            if (wait(pid) == 0)
+            {
+                // commit git merge would auto commit,
+                // need to commit ourselves after git merge tool
+                git.execute(["commit", "-m", "Merge commit"]);
+            }
+            else
+            {
+                git.execute("merge", "--abort");
+                return false;
+            }
+        }
+
+        // merging should create a new commit
+        string mergedHash = git.hash;
+        import std.exception : enforce;
+        // could this happen when fast-forwarding?...
+        //  however, we should never start merging then in the first place
+        enforce(mergedHash != divergedHash, "Apparently the "
+                ~ "merge did not create a new commit...");
+
+        return true;
+
+    }
+
+    unittest
+    {
+        enum string testRepo = "testRepo";
+
+        import std.file;
+        import std.algorithm;
+        Git mgit = new Git(buildPath(thisExePath().dirName, testRepo));
+
+        void PrepareMergeScenario()
+        {
+            if (exists(testRepo))
+                rmdirRecurse(testRepo);
+            mkdir(testRepo);
+
+            mgit.execute("init");
+
+            string[] fileNames = [
+                buildPath(testRepo, "file1"),
+                buildPath(testRepo, "file2")];
+            File[] files;
+            foreach (filename; fileNames)
+                files ~= File(filename, "w");
+
+            files[0].write(q"EOS
+Line 1
+Line 2
+Line 3
+EOS");
+            files[1].write(q"EOS
+Line 11
+Line 22
+Line 33
+
+Line 55
+EOS");
+
+            files.each!(f=>f.flush());
+
+            mgit.execute(["add", "-A"]);
+            mgit.execute(["commit", "-m", "\"1\""]);
+
+            files[0].write("Line 4\n");
+            files[1].write("Line 66\n");
+            files.each!((f) { f.flush(); f.close(); });
+            mgit.execute(["commit", "-am", "\"2\""]);
+            mgit.execute(["checkout", "-b", "mergeBranch", "HEAD~1"]);
+            files[0].open(fileNames[0], "a+");
+            files[0].writeln("Line 4\nLine 5\n");
+            files[0].flush();
+            files[0].sync();
+            files[1].open(fileNames[1], "a+");
+            files[1].writeln("oh noes");
+            files[1].flush();
+            mgit.execute(["commit", "-am", "\"diverged\""]);
+        }
+
+        PrepareMergeScenario();
+
+        // create merge commit
+        if (merge("mergeBranch", "master", mgit))
+        {
+            writeln("MERGE SUCCESSFUL");
+            mgit.execute("rebase", "mergeBranch", "master");
+            mgit.execute("branch", "-d", "mergeBranch");
+
+            // update commit message (ammend)
+            mgit.commit("Merged update\n\n",
+                                true);
+        }
+        else
+        {
+                mgit.execute(["checkout", "master"]);
+                mgit.execute("branch", "-D", "mergeBranch");
+                assert(0);
         }
     }
 
@@ -584,7 +829,11 @@ class DotfileManager
     void commitAndPush(string commitMsg)
     {
         this.git.commit(commitMsg);
+        push();
+    }
 
+    void push()
+    {
         if (!this.options.bNoRemote)
         {
             writeln("... Reaching out to git repository ...");

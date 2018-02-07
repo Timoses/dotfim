@@ -18,6 +18,11 @@ class Gitfile
         this.file = file;
 
         // read contents of gitFile
+        read();
+    }
+
+    void read()
+    {
         import std.conv : to;
         import std.stdio : File;
         File git = File(this.file, "r");

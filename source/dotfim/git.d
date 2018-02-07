@@ -38,9 +38,12 @@ class Git
         execute("checkout", branchName);
     }
 
-    void commit(string commitMsg)
+    void commit(string commitMsg, bool amend = false)
     {
-        this.execute("commit", "-m", commitMsg);
+        if (amend)
+            this.execute("commit", "--amend", "-m", commitMsg);
+        else
+            this.execute("commit", "-m", commitMsg);
     }
 
     void push(string branch)
@@ -66,9 +69,9 @@ class Git
     }
 
     enum ErrorMode { Throw, Ignore };
-    auto execute(string file = __FILE__, int line = __LINE__)(string[] cmds ...)
+    auto execute(ErrorMode eMode = ErrorMode.Throw, string file = __FILE__, int line = __LINE__)(string[] cmds ...)
     {
-        return Git.staticExecute!(ErrorMode.Throw, file, line)(this.dir, cmds);
+        return Git.staticExecute!(eMode, file, line)(this.dir, cmds);
     }
 
     static auto staticExecute(ErrorMode emode = ErrorMode.Throw, string file = __FILE__, int line = __LINE__)(string location, string[] cmds ...)
