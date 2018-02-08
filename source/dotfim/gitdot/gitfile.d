@@ -23,6 +23,8 @@ class Gitfile
 
     void read()
     {
+        this._rawLines.length = 0;
+
         import std.conv : to;
         import std.stdio : File;
         File git = File(this.file, "r");
