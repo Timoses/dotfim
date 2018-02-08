@@ -3,15 +3,19 @@
 DotfiM manages your git repository and syncs it with your local dotfiles.
 The advantage is that you can make live changes to your dotfiles which will be synced automatically to your git repository after running `dotfim`.
 
+## Content
+- [Installation](#installation)
+- [Usage](#usage)
+- [Commands](#commands)
+
 
 ## Installation
 
-### Build
-
-#### Requirements
+### Requirements
 - D compiler (https://dlang.org/download.html)
 - DUB "Package and build management system for D" (http://code.dlang.org/download)
 
+### Build
 ```
 git clone git@github.com:Timoses/dotfim.git
 cd dotfim
@@ -38,8 +42,6 @@ Update:
 dotfim
 ```
 
-The best way to use DotfiM is to once run `dotfim` on start-up and run it again before ending the a session (e.g. your work day on the computer).
-
 DotfiM will add two sections to your dotfile:
 
 1. Git Section:
@@ -47,8 +49,11 @@ DotfiM will add two sections to your dotfile:
 
 2. Local Section:
   Changes in this section are only kept locally.
-  
-  
+
+If you make changes to a dotfile in multiple locations DotfiM will
+attempt to merge. Git Merge Tool will be started if any merge conflicts
+arise.
+
 ## Commands
 
 #### `dotfim`
@@ -65,4 +70,4 @@ Add a dotfile to gitRepo. The file does not need to exist locally, but requires 
 
 #### `dotfim remove <dotfile1> <dotfile2> ... <dotfileN>`
 
-DotfiM will stop managing dotfiles and only leave the content of the local section in each, respectively. The corresponding gitfile is also removed and the changes are commited to the gitRepo.
+DotfiM will stop managing these dotfiles and only leave the content of the local section in each, respectively. The corresponding gitfile is left in the git repository unmanaged.
