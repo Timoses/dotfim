@@ -74,4 +74,8 @@ DotfiM will stop managing these dotfiles and only leave the content of the local
 
 #### `dotfim ls` or `dotfim list`
 
+#### `dotfim unsync`
+
+Calls `dotfim remove` on all managed dotfiles, removes DotfiM repository and deletes the dotfim.json settings.
+
 List all dotfiles managed by DotfiM.
