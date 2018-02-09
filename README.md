@@ -1,7 +1,7 @@
 # DotfiM - A Dotfile Manager
 
-DotfiM manages your git repository and syncs it with your local dotfiles.
-The advantage is that you can make live changes to your dotfiles which will be synced automatically to your git repository after running `dotfim`.
+DotfiM manages your dotfiles git repository and syncs it with your local dotfiles.
+The advantage is that you can make live changes to your dotfiles which will be synced automatically to your git repository after running `dotfim`. Simply run `dotfim` on other devices without losing your setup.
 
 ## Content
 - [Installation](#installation)
