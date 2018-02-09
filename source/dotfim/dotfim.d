@@ -567,6 +567,8 @@ EOS");
         // update now since after add() new gitHash is commited eventually
         update();
 
+        writeln("------------------------");
+
         GitDot[] createdGitDots;
 
         import std.algorithm : map;
@@ -584,6 +586,7 @@ EOS");
             import std.path;
             import std.algorithm : canFind;
 
+            // Check if file is residing in either dotPath or gitPath
             bool bIsGitFile =
                 file.canFind(this.settings.gitPath);
             bool bIsDotFile = bIsGitFile ? false
@@ -591,6 +594,7 @@ EOS");
 
             if (!(bIsGitFile || bIsDotFile))
             {
+                // can't add a file outside of dot-/gitPath
                 stderr.writeln("File ", file, " does neither reside within the dotfile path (", this.settings.dotPath, ") nor git path (", this.settings.gitPath, ")!\n\tSkipping");
                 continue;
             }
@@ -608,6 +612,19 @@ EOS");
                     bIsGitFile ? this.settings.gitPath :
                     bIsDotFile ? this.settings.dotPath :
                     assertNoEntry()).array;
+
+            import std.file : exists;
+            // Check if file exists as either git- or dotfile
+            bool bGitExists = exists(buildPath(this.settings.gitPath,
+                        relFile));
+            bool bDotExists = exists(buildPath(this.settings.dotPath,
+                        relFile));
+
+            if (!(bGitExists || bDotExists))
+            {
+                stderr.writeln("File ", file, " does neither exist as gitfile nor as dotfile.");
+                continue;
+            }
 
             assert(relFile != "");
 
