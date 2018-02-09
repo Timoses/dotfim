@@ -71,3 +71,7 @@ Add a dotfile to gitRepo. The file does not need to exist locally, but requires 
 #### `dotfim remove <dotfile1> <dotfile2> ... <dotfileN>`
 
 DotfiM will stop managing these dotfiles and only leave the content of the local section in each, respectively. The corresponding gitfile is left in the git repository unmanaged.
+
+#### `dotfim ls` or `dotfim list`
+
+List all dotfiles managed by DotfiM.
