@@ -129,7 +129,8 @@ class DotfileManager
         string local = this.git.hash;
         string remote = this.git.remoteHash;
 
-        if (local != remote)
+        // remote branch exists and differs
+        if (remote.length > 0 && local != remote)
         {
             import std.algorithm : canFind;
             // remote branch is ahead -> checkout remote
@@ -806,7 +807,7 @@ EOS");
         pathsCreated ~= gitPath;
 
         auto res = Git.staticExecute!(Git.ErrorMode.Ignore)
-            ("", "clone", "--branch", dotfimGitBranch, gitRepo, gitPath);
+            ("", "clone", gitRepo, gitPath);
         enforce(res.status == 0, "Could not clone the repository " ~
                 gitRepo ~ "\n Git Error: " ~ res.output);
 

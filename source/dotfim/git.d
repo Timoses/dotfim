@@ -4,6 +4,8 @@ import std.stdio;
 
 class Git
 {
+    enum ErrorMode { Throw, Ignore };
+
     // operating directory
     string dir;
 
@@ -31,7 +33,7 @@ class Git
     void setBranch(string branchName)
     {
         // if branchName does not exist create it
-        if (execute("rev-parse", "--verify", branchName)
+        if (execute!(ErrorMode.Ignore)("rev-parse", "--verify", branchName)
                 .status != 0)
             execute("branch", branchName);
 
@@ -65,10 +67,15 @@ class Git
         import std.exception : enforce;
         enforce(branchName != "", "Unable to determine branch for remote hash.");
         import std.string : chomp;
-        return execute("rev-parse", "origin/dotfim").output.chomp;
+        auto res = execute!(ErrorMode.Ignore)("rev-parse", "origin/dotfim");
+
+        // remote branch origin/dotfim does not exist?
+        if (res.status > 0)
+            return "";
+        else
+            return res.output.chomp;
     }
 
-    enum ErrorMode { Throw, Ignore };
     auto execute(ErrorMode eMode = ErrorMode.Throw, string file = __FILE__, int line = __LINE__)(string[] cmds ...)
     {
         return Git.staticExecute!(eMode, file, line)(this.dir, cmds);
