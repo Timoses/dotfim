@@ -601,9 +601,13 @@ EOS");
                 continue;
             }
 
+            // should never reach assertNoEntry
+            auto assertNoEntry = () { assert(bIsGitFile && bIsDotFile); return "";};
+
             string relFile = asRelativePath(file,
                     bIsGitFile ? this.settings.gitPath :
-                    bIsDotFile ? this.settings.dotPath : "").array;
+                    bIsDotFile ? this.settings.dotPath :
+                    assertNoEntry()).array;
 
             assert(relFile != "");
 
