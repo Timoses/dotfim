@@ -774,7 +774,12 @@ EOS");
         {
             import std.file : rmdirRecurse;
             foreach (path; pathsCreated)
-                rmdirRecurse(path);
+            {
+                if (exists(path))
+                {
+                    rmdirRecurse(path);
+                }
+            }
         }
         // Ask user for desired locations
         dotPath = askPath("Your home path", dotPath);
