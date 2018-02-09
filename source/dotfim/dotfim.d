@@ -673,6 +673,7 @@ EOS");
 
     // Remove gitFile if existing and write only custom content
     // to dotfile (if none leave it empty)
+    // Also commits and pushes unmanaged gitfiles
     void remove(string[] files)
     {
         update();
@@ -680,6 +681,7 @@ EOS");
         writeln("------------------------");
 
         string unmanagedFiles;
+        string[] filesNotManaged;
 
         foreach (file; files)
         {
@@ -687,7 +689,7 @@ EOS");
 
             if (!found)
             {
-                stderr.writeln("File ", file, " could not be removed as it is not managed by DotfiM.");
+                filesNotManaged ~= file;
                 continue;
             }
 
@@ -710,13 +712,13 @@ EOS");
             this.gitdots = this.gitdots.remove!((a) => a == found);
         }
 
+        import std.string : splitLines, join;
+        import std.algorithm : map;
         if (unmanagedFiles != "")
         {
             this.commitAndPush("DotfiM Unmanage: \n\n" ~ unmanagedFiles);
 
             writeln("Unmanaged:");
-            import std.string : splitLines, join;
-            import std.algorithm : map;
             writeln(unmanagedFiles
                         .splitLines
                         .map!((e) => "\t" ~ e)
@@ -726,6 +728,11 @@ EOS");
 
             update();
         }
+
+        import std.exception : enforce;
+        enforce(filesNotManaged.length == 0, "The following files could "
+                ~ "not be removed because they are not managed by DotfiM:\n"
+                ~ filesNotManaged.map!((e) => "\t" ~ e).join("\n"));
     }
 
     static DotfileManager sync(string[] repoURI, string settingsFile)
@@ -841,6 +848,39 @@ EOS");
         settings.settingsFile = settingsFile;
 
         return new DotfileManager(settings);
+    }
+
+    void unsync()
+    {
+        if (!askContinue("Unsync will unmanage all dotfiles managed by DotfiM\n"
+                      ~ "Additionally, your current setup will be removed\n"
+                      ~ "Are you sure to continue? (y/n)", "y"))
+            return;
+
+        string[] files;
+        foreach(gitdot; this.gitdots)
+        {
+            import std.range : array;
+            files ~= gitdot.gitfile.file;
+        }
+
+        // unmanage all files
+        {
+            scope(failure)
+                writeln("Error while unmanaging files... Aborting unsync!");
+            remove(files);
+        }
+        writeln("All files successfully unmanaged.");
+
+        // remove dotfim repo
+        import std.file : rmdirRecurse, exists;
+        if (exists(this.settings.gitPath))
+            rmdirRecurse(this.settings.gitPath);
+
+        // remove
+        write("Removing settings ...");
+        this.settings.remove();
+        writeln("Removed!");
     }
 
     void list()
@@ -987,6 +1027,8 @@ mixin template SettingsTemplate()
             import std.file : readText, exists;
             import std.exception : enforce;
 
+            this.settingsFile = settingsFile;
+
             enforce(exists(settingsFile), "No settings seem to be stored. Please run dotfim sync");
 
             import std.json;
@@ -1021,6 +1063,19 @@ mixin template SettingsTemplate()
 
             json.write(toFile);
             json.close();
+        }
+
+        void remove()
+        in
+        {
+            assert(this.settingsFile != "");
+        }
+        body
+        {
+            import std.file : exists, remove;
+            if (exists(this.settingsFile))
+                remove(this.settingsFile);
+
         }
     }
 }
