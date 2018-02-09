@@ -49,10 +49,12 @@ DotfiM will add two sections to your dotfile:
 
 2. Local Section:
   Changes in this section are only kept locally.
+  
+DotfiM uses a separate branch (`dotfim`) in your git repository without touching any other branches.
 
 If you make changes to a dotfile in multiple locations DotfiM will
 attempt to merge. Git Merge Tool will be started if any merge conflicts
-arise.
+arise. Merging will temporarily create a `dotfim-merge` branch used for merging only.
 
 ## Commands
 
