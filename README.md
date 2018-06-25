@@ -52,15 +52,18 @@ DotfiM will add two sections to your dotfile:
   
 DotfiM uses a separate branch (`dotfim`) in your git repository without touching any other branches.
 
+#### Merging
+
 If you make changes to a dotfile in multiple locations DotfiM will
 attempt to merge. Git Merge Tool will be started if any merge conflicts
 arise. Merging will temporarily create a `dotfim-merge` branch used for merging only.
+
 
 ## Commands
 
 #### `dotfim`
 
-Pull from remote gitRepo, check for changes, update dotfiles and gitfiles and eventually commit and push to remote.
+Pull from remote gitRepo, check for changes, update dotfiles and gitfiles and eventually commit local changes and push to remote.
 
 #### `dotfim sync <gitRepo>`
 
@@ -68,7 +71,7 @@ Create a folder for the git repository and run `dotfim`.
 
 #### `dotim add <dotfile1> <dotfile2> ... <dotfileN>`
 
-Add a dotfile to gitRepo. The file does not need to exist locally, but requires to be a based upon the dotfiles path (specified during `dotfim sync` and stored in dotfim.json). Added dotfiles will be managed by Dotfim when running other commands (e.g. `dotfim`)
+Add a dotfile to gitRepo. The file does not need to exist locally, but requires to be based upon the dotfiles path (specified during `dotfim sync` and stored in dotfim.json). Added dotfiles will be managed by DotfiM when running other commands (e.g. `dotfim`).
 
 #### `dotfim remove <dotfile1> <dotfile2> ... <dotfileN>`
 
@@ -76,8 +79,8 @@ DotfiM will stop managing these dotfiles and only leave the content of the local
 
 #### `dotfim ls` or `dotfim list`
 
+List all dotfiles managed by DotfiM.
+
 #### `dotfim unsync`
 
 Calls `dotfim remove` on all managed dotfiles, removes DotfiM repository and deletes the dotfim.json settings.
-
-List all dotfiles managed by DotfiM.
