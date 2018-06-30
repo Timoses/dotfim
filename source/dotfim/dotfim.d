@@ -560,7 +560,7 @@ EOS");
     }
 
     // Adds dotfiles to git repo and starts managing these files
-    // The gitfile should not exist
+    // The gitfile should not be managed
     // If the dotfile does not exist create it
     void add(string[] dotfiles)
     {
