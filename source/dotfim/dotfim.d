@@ -795,8 +795,7 @@ EOS");
 
         writeln("Confirm defaults with ENTER or type desired option");
 
-        import std.path : mkdir, rmdir;
-        import std.file : exists;
+        import std.file : exists, mkdir, rmdir;
 
         string[] pathsCreated;
         scope(failure)
