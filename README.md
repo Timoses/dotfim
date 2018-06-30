@@ -17,10 +17,10 @@ The advantage is that you can make changes to your dotfiles which will be synced
 - DUB "Package and build management system for D" (http://code.dlang.org/download)
 
 ### Build
+Download DotfiM [here](https://github.com/Timoses/dotfim/releases/latest) and build the binary:
 ```
-git clone git@github.com:Timoses/dotfim.git
 cd dotfim
-dub build
+dub build --build=release
 ```
 
 ## Usage
