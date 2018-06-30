@@ -1,12 +1,13 @@
 # DotfiM - A Dotfile Manager
 
 DotfiM manages your dotfiles git repository and syncs it with your local dotfiles.
-The advantage is that you can make live changes to your dotfiles which will be synced automatically to your git repository after running `dotfim`. Simply run `dotfim` on other devices without losing your setup.
+The advantage is that you can make changes to your dotfiles which will be synced automatically to your git repository after running `dotfim`. Simply run `dotfim` on other devices without losing your setup.
 
 ## Content
 - [Installation](#installation)
 - [Usage](#usage)
 - [Commands](#commands)
+- [Insights](#insights)
 
 
 ## Installation
@@ -24,39 +25,25 @@ dub build
 
 ## Usage
 
-Do
+Get DotfiM started with
 
 ```
 dotfim sync <gitRepo>
 ```
 
-Let DotfiM manage your first dotfile:
+Add a dotfile to be managed by DotfiM
 
 ```
 dotfim add ~/.myDotfile
 ```
 
-Update:
+Sync dotfile with your gitfile
 
 ```
 dotfim
 ```
 
-DotfiM will add two sections to your dotfile:
-
-1. Git Section:
-  This section is synced to your gitRepo. Additions to this section will be synced to your gitRepo and pushed to remote when running `dotfim`. Running `dotfim` on another machine (using the same gitRepo) will sync the local dotfiles.
-
-2. Local Section:
-  Changes in this section are only kept locally.
-  
-DotfiM uses a separate branch (`dotfim`) in your git repository without touching any other branches.
-
-#### Merging
-
-If you make changes to a dotfile in multiple locations DotfiM will
-attempt to merge. Git Merge Tool will be started if any merge conflicts
-arise. Merging will temporarily create a `dotfim-merge` branch used for merging only.
+What's a [gitfile and dotfile](#gitfile-and-dotfile)?
 
 
 ## Commands
@@ -84,3 +71,35 @@ List all dotfiles managed by DotfiM.
 #### `dotfim unsync`
 
 Calls `dotfim remove` on all managed dotfiles, removes DotfiM repository and deletes the dotfim.json settings.
+
+
+## Insights
+
+Read more about the internal workings of DotfiM here.
+
+### `dotfim.json` settings file
+DotfiM requires a settings file `dotfim.json` containing information about the locations of your home folder and the local git repository folder and further stores the remote git repository url. To initially create this file run `dotfim sync`.
+
+### gitfile and dotfile
+DotfiM differentiates between `gitfile` and `dotfile`. `gitfile` relates to the file in the git repository while `dotfile` relates to the file in your home folder.
+
+#### gitfile
+DotfiM adds a header line (e.g. "# This file is managed by DotfiM") to track whether a gitfile is currently managed by DotfiM.
+
+#### dotfile
+A managed dotfile (`dotfim add`) will contain two sections:
+
+* Git Section:
+  Contents in this section are synced with the gitfile.
+
+* Local Section:
+  Contents in this section are only kept locally.
+
+Adding lines outside of these sections will append them to the local section the next time `dotfim` is run.
+
+### Git repository
+DotfiM uses a separate branch (`dotfim`) in your git repository without touching any other branches.
+
+#### Merging
+
+If your dotfiles are out of sync DotfiM will attempt to merge. Git Merge Tool will be started if any merge conflicts arise. Merging will temporarily create a `dotfim-merge` branch used for merging only.
