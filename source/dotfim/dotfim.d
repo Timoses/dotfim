@@ -142,16 +142,6 @@ class DotfileManager
                 writeln("Checked out remote branch: ", remote[0..6]);
             }
 
-            // remote and local branches diverged -> block!
-            import std.string : chomp;
-            string mergeBase = this.git.execute("merge-base",
-                    this.dotfimGitBranch,
-                    "origin/" ~ this.dotfimGitBranch).output.chomp;
-            import std.exception : enforce;
-            enforce(mergeBase != ""
-                    && (mergeBase == local || mergeBase == remote),
-                    "Remote and local branches diverged! Please fix manually.");
-
             // else: local is ahead of remote?
             if (!this.options.bNoRemote
                     && this.git.execute("branch", "--contains",
@@ -204,6 +194,16 @@ class DotfileManager
         GitDot[] dfUpdatees;
         GitDot[] gfUpdatees;
         GitDot[] divergees;
+
+        import std.string : chomp;
+        string branchBase = this.git.execute("merge-base",
+                this.dotfimGitBranch,
+                "origin/" ~ this.dotfimGitBranch).output.chomp;
+        bool bBranchesDiverged;
+        if (branchBase != ""
+                    && branchBase != curGitHash
+                    && branchBase != this.git.remoteHash)
+            bBranchesDiverged = true;
 
         // 1: Collect files that need update
         foreach (gitdot; this.gitdots)
@@ -260,82 +260,120 @@ class DotfileManager
         }
 
         // 2: Merge
-        if (divergees.length > 0)
+        if (bBranchesDiverged || divergees.length > 0)
         {
             import std.algorithm : map;
             import std.array : join;
             import std.conv : to;
-            if (!askContinue("The following files have diverged:\n"
+            // First: merge diverged dotfiles into dotfimBranch
+            if (divergees.length)
+            {
+                if (!askContinue("The following files have diverged:\n"
                         ~ divergees.map!((e) => asRelativePath(
                                 e.gitfile.file,
                                 this.settings.gitPath).to!string)
                             .join("\n")
                         ~ "\nWould you like to attempt merging? (y/n): ", "y"))
-                // stop!
-                throw new Exception("User aborted merge!");
+                    // stop!
+                    throw new Exception("User aborted merge!");
 
-            // common base commit should be dotfile hash
-            // TODO: support multiple different dotfile hashes
-            //       (however that might happen) -> multiple merge
-            //       branches and merge commits
-            string commonBaseHash = divergees[0].dotfile.gitHash;
-            foreach (gitdot; divergees)
-            {
-                import std.exception : enforce;
-                enforce(gitdot.dotfile.gitHash == commonBaseHash,
-                        "Found differing git hashes in divergent "
-                        ~ "dotfiles. Currently only one merge base "
-                        ~ "base is supported! Aborting Merge.");
-            }
-
-            immutable string mergeBranchName = "merge-" ~ dotfimGitBranch;
-            // commit dotfiles to merge branch
-            this.git.execute(["checkout", "-b",
-                                mergeBranchName,
-                                commonBaseHash]);
-            // write dotfiles updates to gitfiles
-            foreach (gitdot; divergees)
-            {
-                gitdot.gitfile.gitLines = gitdot.dotfile.gitLines;
-                gitdot.gitfile.write();
-                this.git.execute("add", gitdot.gitfile.file);
-            }
-            // commit these changes
-            this.git.execute(["commit", "-m", "Diverged commit"]);
-
-            // Try merging
-            if (merge(mergeBranchName, dotfimGitBranch, this.git)
-                && askContinue("The merge appears successful.\n" ~
-                        "Would you like to take over the changes? (y/n): ",
-                        "y"))
-            {
-                // take over merged branch
-                git.execute("rebase", mergeBranchName, dotfimGitBranch);
-                git.execute("branch", "-d", mergeBranchName);
-
-                string mergedFiles;
-                foreach (div; divergees)
-                {
-                    mergedFiles ~= asRelativePath(div.gitfile.file,
-                                    this.settings.gitPath).to!string
-                                ~ "\n";
-                }
-                // update commit message (ammend)
-                git.commit("Merged update\n\n" ~ mergedFiles,
-                                    true);
-
-                curGitHash = git.hash;
-
-                // read merged contents from gitfiles
+                // common base commit should be dotfile hash
+                // TODO: support multiple different dotfile hashes
+                //       (however that might happen) -> multiple merge
+                //       branches and merge commits
+                string commonBaseHash = divergees[0].dotfile.gitHash;
                 foreach (gitdot; divergees)
-                    gitdot.gitfile.read();
-            }
-            else
-            {
-                git.execute(["checkout", dotfimGitBranch]);
-                git.execute("branch", "-D", mergeBranchName);
+                {
+                    import std.exception : enforce;
+                    enforce(gitdot.dotfile.gitHash == commonBaseHash,
+                            "Found differing git hashes in divergent "
+                            ~ "dotfiles. Currently only one merge base "
+                            ~ "base is supported! Aborting Merge.");
+                }
 
-                throw new Exception("Merge failed... Aborted dotfim update!");
+                immutable string mergeBranchName = "merge-" ~ dotfimGitBranch;
+                scope(failure)
+                {
+                    git.execute(["checkout", dotfimGitBranch]);
+                    git.execute("branch", "-D", mergeBranchName);
+                }
+                // commit dotfiles to merge branch
+                this.git.execute(["checkout", "-b",
+                                    mergeBranchName,
+                                    commonBaseHash]);
+                // write dotfiles updates to gitfiles
+                foreach (gitdot; divergees)
+                {
+                    gitdot.gitfile.gitLines = gitdot.dotfile.gitLines;
+                    gitdot.gitfile.write();
+                    this.git.execute("add", gitdot.gitfile.file);
+                }
+                // commit these changes
+                this.git.execute(["commit", "-m", "Diverged commit"]);
+
+                // Try merging
+                if (merge(mergeBranchName, dotfimGitBranch, this.git)
+                    && askContinue("The merge appears successful.\n" ~
+                            "Would you like to take over the changes? (y/n): ",
+                            "y"))
+                {
+                    // take over merged branch
+                    git.execute("rebase", mergeBranchName, dotfimGitBranch);
+                    git.execute("branch", "-d", mergeBranchName);
+
+                    string mergedFiles;
+                    foreach (div; divergees)
+                    {
+                        mergedFiles ~= asRelativePath(div.gitfile.file,
+                                        this.settings.gitPath).to!string
+                                    ~ "\n";
+                    }
+                    // update commit message (ammend)
+                    git.commit("Merged update\n\n" ~ mergedFiles,
+                                        true);
+
+                    curGitHash = git.hash;
+
+                    // read merged contents from gitfiles
+                    foreach (gitdot; divergees)
+                        gitdot.gitfile.read();
+                }
+                else
+                {
+                    throw new Exception("Merge failed... Aborted dotfim update!");
+                }
+            }
+            // Second: If branches had diverged, merge them back together
+            if (bBranchesDiverged)
+            {
+                immutable string mergeBranchName = "merge-" ~ dotfimGitBranch;
+                scope(failure)
+                {
+                    git.execute(["checkout", dotfimGitBranch]);
+                    git.execute("branch", "-D", mergeBranchName);
+                }
+                // commit dotfiles to merge branch
+                this.git.execute(["checkout", "-b",
+                                    mergeBranchName,
+                                    dotfimGitBranch]);
+
+                if (merge(mergeBranchName, "origin/" ~ dotfimGitBranch
+                            , this.git))
+                {
+                    // take over merged branch
+                    git.execute("rebase", mergeBranchName, dotfimGitBranch);
+                    git.execute("branch", "-d", mergeBranchName);
+
+                    curGitHash = git.hash;
+
+                    // read new gitfile contents
+                    foreach (gitdot; this.gitdots)
+                        gitdot.gitfile.read();
+                }
+                else
+                {
+                    throw new Exception("Merge failed... Aborted dotfim update!");
+                }
             }
         }
 
