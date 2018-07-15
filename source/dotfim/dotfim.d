@@ -872,7 +872,7 @@ EOS");
         pathsCreated ~= gitPath;
 
         auto res = Git.staticExecute!(Git.ErrorMode.Ignore)
-            ("", "clone", gitRepo, gitPath);
+            ("", "clone", "--single-branch", "-b", "dotfim", gitRepo, gitPath);
         enforce(res.status == 0, "Could not clone the repository " ~
                 gitRepo ~ "\n Git Error: " ~ res.output);
 
