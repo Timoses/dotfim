@@ -42,7 +42,8 @@ class GitDot
 
         // assert dotFile/dotPath begins with "."
         assert(relFile != "");
-        assert(relFile[0] == '.',
+        import std.exception : enforce;
+        enforce(relFile[0] == '.',
                 "Dotfiles are hidden... (begin with \".\")");
 
         // create gitFolder if dotfile resides in one
