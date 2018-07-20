@@ -27,6 +27,54 @@ struct Sync
 
     private DotfileManager exec()
     {
+        DotfileManager.Settings settings = interrogateUser();
+        return setup(settings);
+    }
+
+    // Use settings to create folders and clone repository (gitRepo)
+    // into git folder
+    DotfileManager setup(DotfileManager.Settings settings)
+    {
+        import std.file : exists, mkdir, rmdir;
+        import std.file : rmdirRecurse;
+
+        string[] pathsCreated;
+        scope(failure)
+        {
+            import std.file : rmdirRecurse;
+            foreach (path; pathsCreated)
+            {
+                if (exists(path))
+                {
+            //        rmdirRecurse(path);
+                }
+            }
+        }
+        with(settings)
+        {
+            if (!exists(dotPath))
+            {
+                mkdir(dotPath);
+                pathsCreated ~= dotPath;
+            }
+
+            mkdir(gitPath);
+            pathsCreated ~= gitPath;
+
+            import dotfim.git;
+            res = Git.staticExecute!(Git.ErrorMode.Ignore)
+                ("", "clone", "--single-branch", "-b",
+                 dfbranch, this.gitRepo, gitPath);
+
+            // save the settings to disk
+            save();
+        }
+
+        return new DotfileManager(settings);
+    }
+
+    DotfileManager.Settings interrogateUser()
+    {
         string dotPath;
         string gitPath;
 
@@ -43,8 +91,8 @@ struct Sync
                     ~ "\t" ~ settings.internal.to!string ~ "\n"
                     ~ "Syncing will delete old setup. Continue? (y/n): ";
 
-                if (!askContinue(question, "y"))
-                    return null;
+                import std.exception : enforce;
+                enforce(askContinue(question, "y"), "Aborted by user");
 
                 // keep current path setup
                 dotPath = settings.dotPath;
@@ -63,69 +111,25 @@ struct Sync
                 gitPath = buildPath(thisExePath().dirName, "dotfimRepo");
             }
 
-            string askPath(string description, string path)
-            {
-                string enteredPath;
-
-                do
-                {
-                    write(description, " (default: ",
-                            path, "): ");
-
-                    import std.string : chomp;
-                    enteredPath = readln().chomp();
-
-                    if (enteredPath == "") enteredPath = path;
-                } while (!isValidPath(enteredPath));
-
-                return enteredPath;
-            }
-
             writeln("Confirm defaults with ENTER or type desired option");
 
-            import std.file : exists, mkdir, rmdir;
-
-            string[] pathsCreated;
-            scope(failure)
-            {
-                import std.file : rmdirRecurse;
-                foreach (path; pathsCreated)
-                {
-                    if (exists(path))
-                    {
-                        rmdirRecurse(path);
-                    }
-                }
-            }
             // Ask user for desired locations
             dotPath = askPath("Your home path", dotPath);
-            if (!exists(dotPath))
-            {
-                mkdir(dotPath);
-                pathsCreated ~= dotPath;
-            }
-
             gitPath = askPath("DotfiM Git Repository Path", gitPath);
 
-            import std.file : rmdirRecurse;
+            import std.file : exists;
             // ask if an existing gitPath should be deleted
             if (exists(gitPath))
             {
-                if (!askContinue("The given git repository path already exists!\n\t!!! Continuing will delete the git repository folder !!!"
-                            ~ "\nContinue? (y/n): ", "y"))
-                        return null;
+                import std.exception : enforce;
+                enforce(askContinue("The given git repository path already exists!\n\t!!! Continuing will delete the git repository folder !!!"
+                            ~ "\nContinue? (y/n): ", "y"),
+                        "Aborted by User.");
 
+                import std.file : rmdirRecurse;
                 rmdirRecurse(gitPath);
             }
 
-            mkdir(gitPath);
-            pathsCreated ~= gitPath;
-
-            import dotfim.git;
-            auto res = Git.staticExecute!(Git.ErrorMode.Ignore)
-                ("", "clone", "--single-branch", "-b", "dotfim", this.gitRepo, gitPath);
-            enforce(res.status == 0, "Could not clone the repository " ~
-                    this.gitRepo ~ "\n Git Error: " ~ res.output);
 
             settings.bFirstSync = true;
 
@@ -135,7 +139,7 @@ struct Sync
 
             settings.settingsFile = settingsFile;
 
-            return new DotfileManager(settings);
+            return settings;
         }
     }
 }

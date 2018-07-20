@@ -36,8 +36,6 @@ class DotfileManager
     this(ref in Settings settings)
     {
         this.settings = settings;
-        // save the settings to disk
-        this.settings.save();
         this();
     }
 
