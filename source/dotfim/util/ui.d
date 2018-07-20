@@ -1,13 +1,33 @@
 module dotfim.util.ui;
 
-static bool askContinue(string question, string yes)
+import std.path : isValidPath;
+import std.stdio : write, readln;
+import std.string : chomp;
+
+bool askContinue(string question, string yes)
 {
-    import std.stdio : write, readln;
     write(question);
 
     string answer;
-    import std.string : chomp;
     answer = readln().chomp();
 
     return answer != yes ? false : true;
 }
+
+string askPath(string description, string defaultpath)
+{
+    string enteredPath;
+
+    do
+    {
+        write(description, " (default: ",
+                defaultpath, "): ");
+
+        enteredPath = readln().chomp();
+
+        if (enteredPath == "") enteredPath = defaultpath;
+    } while (!isValidPath(enteredPath));
+
+    return enteredPath;
+}
+

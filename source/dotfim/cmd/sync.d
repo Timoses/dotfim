@@ -1,5 +1,6 @@
 module dotfim.cmd.sync;
 
+import std.algorithm : canFind;
 import std.exception : enforce;
 import std.path : buildPath, dirName, isValidPath;
 import std.stdio : writeln, readln, write;
@@ -62,9 +63,38 @@ struct Sync
             pathsCreated ~= gitPath;
 
             import dotfim.git;
+            immutable string dfbranch = DotfileManager.dotfimGitBranch;
+            // first check if remote has
+            auto res = Git.staticExecute!(Git.ErrorMode.Ignore)
+                ("", "ls-remote", "--heads", this.gitRepo);
+            // dotfim branch exists!
+            if (res.output.canFind("refs/heads/" ~ dfbranch))
+            {
+                res = Git.staticExecute!(Git.ErrorMode.Ignore)
+                    ("", "clone", "--single-branch", "-b",
+                     dfbranch, this.gitRepo, gitPath);
+            }
+            else
+            {
+                res = Git.staticExecute!(Git.ErrorMode.Ignore)
+                    ("", "clone", this.gitRepo, gitPath);
+                Git.staticExecute(gitPath, "checkout", "-b", dfbranch);
+
+            }
+            enforce(res.status == 0, "Could not clone the repository " ~
+                    this.gitRepo ~ "\n Git Error: " ~ res.output);
+
+
+            // Create an initial commit if repository is empty
             res = Git.staticExecute!(Git.ErrorMode.Ignore)
-                ("", "clone", "--single-branch", "-b",
-                 dfbranch, this.gitRepo, gitPath);
+                (gitPath, "rev-parse", "--abbrev-ref", "HEAD");
+            if (res.status != 0)
+            {
+                Git.staticExecute(gitPath, "commit", "--allow-empty",
+                        "-m", "Initial commit");
+                Git.staticExecute(gitPath, "push", "origin", dfbranch);
+            }
+
 
             // save the settings to disk
             save();
