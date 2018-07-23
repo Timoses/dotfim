@@ -177,7 +177,7 @@ struct Update
                     git.execute(["commit", "-m", "Diverged commit"]);
 
                     // Try merging
-                    if (merge(mergeBranchName, dotfimGitBranch, git)
+                    if (git.merge(mergeBranchName, dotfimGitBranch)
                         && askContinue("The merge appears successful.\n" ~
                                 "Would you like to take over the changes? (y/n): ",
                                 "y"))
@@ -222,8 +222,8 @@ struct Update
                                         mergeBranchName,
                                         dotfimGitBranch]);
 
-                    if (merge(mergeBranchName, "origin/" ~ dotfimGitBranch
-                                , git))
+                    if (git.merge(mergeBranchName
+                                , "origin/" ~ dotfimGitBranch))
                     {
                         // take over merged branch
                         git.execute("rebase", mergeBranchName, dotfimGitBranch);
