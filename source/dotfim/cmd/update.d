@@ -338,3 +338,40 @@ struct Update
         }
     }
 }
+
+unittest
+{
+    import std.stdio;
+    import dotfim.util.test;
+    import dotfim.cmd : Add, Sync;
+
+    string oldGitHash;
+    enum string checkHash = q{
+        assert(oldGitHash != dfm.git.hash, "Hash was not updated");
+        oldGitHash = dfm.git.hash;
+        };
+    {
+        auto dfm = prepareExample();
+        Update(dfm);
+        oldGitHash = dfm.git.hash;
+        assert(dfm.gitdots.length == 0);
+        Add(dfm, testfile);
+        mixin(checkHash);
+        auto gitdot = dfm.findGitDot(testfile);
+        assert(gitdot);
+
+        // write entry
+        enum string testentry = "This is a test entry to be updated.";
+        auto dfile = gitdot.dotfile;
+        dfile.gitLines = dfile.gitLines ~ testentry;
+        dfile.write;
+        Update(dfm);
+        mixin(checkHash);
+    }
+    auto dfm = new DotfileManager(settingsfile);
+    assert(dfm.gitdots.length == 1);
+    auto gitdot = dfm.findGitDot(testfile);
+    assert(gitdot);
+    assert(gitdot.dotfile.gitLines == gitdot.gitfile.gitLines);
+    assert(gitdot.dotfile.gitHash == dfm.git.hash);
+}

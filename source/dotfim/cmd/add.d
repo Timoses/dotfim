@@ -14,7 +14,9 @@ struct Add
 
     string[] dotfiles;
 
-    this(lazy DotfileManager dfm, string[] args = null)
+    this(lazy DotfileManager dfm, const string arg)
+    { this(dfm, [arg]); }
+    this(lazy DotfileManager dfm, const string[] args = null)
     {
         import std.exception : enforce;
         enforce(args, "Usage: dotfim add <file1> <file2> ... <fileN>");
@@ -38,7 +40,7 @@ struct Add
         import dotfim.cmd.update;
         Update(this.dfm);
 
-        writeln("------------------------");
+        writeln("--------DotfiM Add----------");
 
         import dotfim.gitdot;
         GitDot[] createdGitDots;

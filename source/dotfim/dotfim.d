@@ -1,5 +1,6 @@
 module dotfim.dotfim;
 
+import std.path : asRelativePath, asNormalizedPath, dirName;
 import std.stdio;
 
 import dotfim.git;
@@ -8,7 +9,6 @@ import dotfim.util;
 
 class DotfileManager
 {
-    import std.path;
 
     enum dotfimGitBranch = "dotfim";
 
@@ -26,7 +26,7 @@ class DotfileManager
     // paths or files relative to gitPath that should be excluded
     static string[] excludedDots = [".git", "cheatSheets"];
 
-    this(string settingsFile, Options options)
+    this(string settingsFile, Options options = Options())
     {
         this.settings = Settings(settingsFile);
         this.options = options;

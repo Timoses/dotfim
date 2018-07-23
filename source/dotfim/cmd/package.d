@@ -2,12 +2,12 @@ module dotfim.cmd;
 
 import dotfim.dotfim;
 
-import dotfim.cmd.add;
-import dotfim.cmd.list;
-import dotfim.cmd.remove;
-import dotfim.cmd.sync;
-import dotfim.cmd.update;
-import dotfim.cmd.unsync;
+public import dotfim.cmd.add;
+public import dotfim.cmd.list;
+public import dotfim.cmd.remove;
+public import dotfim.cmd.sync;
+public import dotfim.cmd.update;
+public import dotfim.cmd.unsync;
 
 class CmdHandler
 {
