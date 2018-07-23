@@ -86,6 +86,7 @@ class Dotfile
     @property void gitLines(string[] lines)
     {
         getGitSection().set(Section.Part.Content, lines);
+        this.managed = lines.length > 0;
     }
 
     @property string[] localLines()
