@@ -24,6 +24,7 @@ You can also [Test DotfiM](#test-dotfim) to see if you like it.
     * [gitfile and dotfile](#gitfile-and-dotfile)
     * [Git repository](#git-repository)
         * [Merging](#merging)
+* [Inspiring projects](#inspiring-projects)
 
 <!-- vim-markdown-toc -->
 
@@ -180,7 +181,7 @@ DotfiM requires a configuration file (defaults to: `dotfim.json`) containing inf
 ### gitfile and dotfile
 DotfiM differentiates between `gitfile` and `dotfile`. `gitfile` relates to the file in the git repository while `dotfile` relates to the file in your home folder.
 
-A line is added to both git- and dotfile (e.g. "# This dotfile is managed by DotfiM") to indicate that it is managed by DotfiM. Further it stores the comment indicator (e.g. "#") used for that file.
+A line is added to both git- and dotfile (e.g. "# This dotfile is managed by DotfiM") to indicate that it is managed by DotfiM. Aside from indicating the managed state of the dotfile the line also declares the comment indicator used for that file (e.g. "#").
 
 ### Git repository
 DotfiM uses a separate branch (`dotfim`) in your git repository without touching any other branches.
@@ -188,3 +189,10 @@ DotfiM uses a separate branch (`dotfim`) in your git repository without touching
 #### Merging
 
 If your dotfiles are out of sync DotfiM will attempt to merge. Git Merge Tool will be started if any merge conflicts arise. Merging will temporarily create a `dotfim-merge` branch used for merging only.
+
+
+## Inspiring projects
+* https://github.com/kairichard/lace
+* https://github.com/ajmalsiddiqui/autodot
+* https://github.com/kobus-v-schoor/dotgit
+* https://github.com/igr/homer
