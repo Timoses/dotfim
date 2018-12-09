@@ -6,6 +6,7 @@ public import dotfim.cmd.add;
 public import dotfim.cmd.list;
 public import dotfim.cmd.remove;
 public import dotfim.cmd.sync;
+public import dotfim.cmd.test;
 public import dotfim.cmd.update;
 public import dotfim.cmd.unsync;
 
@@ -47,6 +48,9 @@ class CmdHandler
                     break;
                 case "unsync":
                     Unsync(CreateInstance(settingsFile, options));
+                    break;
+                case "test":
+                    Test(args[start..$]);
                     break;
                 default:
                     import std.exception : enforce;

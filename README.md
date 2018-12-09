@@ -4,10 +4,22 @@ DotfiM manages your dotfiles git repository and syncs it with your local dotfile
 The advantage is that you can make changes to your dotfiles which will be synced automatically to your git repository after running `dotfim`. Simply run `dotfim` on other devices without losing your setup.
 
 ## Content
-- [Installation](#installation)
-- [Usage](#usage)
-- [Commands](#commands)
-- [Insights](#insights)
+<!-- vim-markdown-toc GFM -->
+
+* [Installation](#installation)
+    * [Requirements](#requirements)
+    * [Build](#build)
+* [Usage](#usage)
+* [Commands](#commands)
+* [Insights](#insights)
+    * [`dotfim.json` settings file](#dotfimjson-settings-file)
+    * [gitfile and dotfile](#gitfile-and-dotfile)
+        * [gitfile](#gitfile)
+        * [dotfile](#dotfile)
+    * [Git repository](#git-repository)
+        * [Merging](#merging)
+
+<!-- vim-markdown-toc -->
 
 
 ## Installation
@@ -48,29 +60,44 @@ What's a [gitfile and dotfile](#gitfile-and-dotfile)?
 
 ## Commands
 
-#### `dotfim`
+----
+**`dotfim`**
 
 Pull from remote gitRepo, check for changes, update dotfiles and gitfiles and eventually commit local changes and push to remote.
 
-#### `dotfim sync <gitRepo>`
+----
+**`dotfim sync <gitRepo>`**
 
 Create a folder for the git repository and run `dotfim`.
 
-#### `dotim add <dotfile1> <dotfile2> ... <dotfileN>`
+----
+**`dotim add <dotfile1> <dotfile2> ... <dotfileN>`**
 
 Add a dotfile to gitRepo. The file does not need to exist locally, but requires to be based upon the dotfiles path (specified during `dotfim sync` and stored in dotfim.json). Added dotfiles will be managed by DotfiM when running other commands (e.g. `dotfim`).
 
-#### `dotfim remove <dotfile1> <dotfile2> ... <dotfileN>`
+----
+**`dotfim remove <dotfile1> <dotfile2> ... <dotfileN>`**
 
 DotfiM will stop managing these dotfiles and only leave the content of the local section in each, respectively. The corresponding gitfile is left in the git repository unmanaged.
 
-#### `dotfim ls` or `dotfim list`
+----
+**`dotfim ls` or `dotfim list`**
 
 List all dotfiles managed by DotfiM.
 
-#### `dotfim unsync`
+----
+**`dotfim unsync`**
 
 Calls `dotfim remove` on all managed dotfiles, removes DotfiM repository and deletes the dotfim.json settings.
+
+----
+**`dotfim test <dir>`**
+
+Creates a playground test environment for experimentation under the path `directory`. The following parts are created:
+* `<dir>/dot/`: Simulated home folder
+* `<dir>/repo.git`: Simulated remote git repository
+
+Run `cd <dir> && dotfim sync repo.git` to get started.
 
 
 ## Insights

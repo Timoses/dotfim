@@ -34,7 +34,7 @@ struct Sync
 
     // Use settings to create folders and clone repository (gitRepo)
     // into git folder
-    DotfileManager setup(DotfileManager.Settings settings)
+    static DotfileManager setup(DotfileManager.Settings settings)
     {
         import std.file : exists, mkdir, rmdir;
         import std.file : rmdirRecurse;
@@ -66,23 +66,23 @@ struct Sync
             immutable string dfbranch = DotfileManager.dotfimGitBranch;
             // first check if remote has
             auto res = Git.staticExecute!(Git.ErrorMode.Ignore)
-                ("", "ls-remote", "--heads", this.gitRepo);
+                ("", "ls-remote", "--heads", settings.gitRepo);
             // dotfim branch exists!
             if (res.output.canFind("refs/heads/" ~ dfbranch))
             {
                 res = Git.staticExecute!(Git.ErrorMode.Ignore)
                     ("", "clone", "--single-branch", "-b",
-                     dfbranch, this.gitRepo, gitPath);
+                     dfbranch, settings.gitRepo, gitPath);
             }
             else
             {
                 res = Git.staticExecute!(Git.ErrorMode.Ignore)
-                    ("", "clone", this.gitRepo, gitPath);
+                    ("", "clone", settings.gitRepo, gitPath);
                 Git.staticExecute(gitPath, "checkout", "-b", dfbranch);
 
             }
             enforce(res.status == 0, "Could not clone the repository " ~
-                    this.gitRepo ~ "\n Git Error: " ~ res.output);
+                    settings.gitRepo ~ "\n Git Error: " ~ res.output);
 
 
             // Create an initial commit if repository is empty

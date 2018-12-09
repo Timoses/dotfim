@@ -1,6 +1,7 @@
 module dotfim.util.ui;
 
-import std.path : isValidPath;
+import std.conv : to;
+import std.path : isValidPath, asNormalizedPath, asAbsolutePath;
 import std.stdio : write, readln;
 import std.string : chomp;
 
@@ -28,6 +29,6 @@ string askPath(string description, string defaultpath)
         if (enteredPath == "") enteredPath = defaultpath;
     } while (!isValidPath(enteredPath));
 
-    return enteredPath;
+    return enteredPath.asAbsolutePath.asNormalizedPath.to!string;
 }
 
