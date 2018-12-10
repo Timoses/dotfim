@@ -17,6 +17,11 @@ class Git
         this.dir = gitDir;
     }
 
+    static bool exists(string repo)
+    {
+        return Git.staticExecute!(ErrorMode.Ignore)("", "ls-remote", repo).status == 0;
+    }
+
     void saveBranch()
     {
         import std.string : chomp;

@@ -20,7 +20,6 @@ struct Sync
 
         this.dir = dir;
 
-        // TODO: validate git repo uri?
         this.gitRepo = args[0];
 
         import dotfim.cmd.update;

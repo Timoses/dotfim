@@ -1,5 +1,6 @@
 module dotfim.dotfim;
 
+import std.exception : enforce;
 import std.path : asRelativePath, asNormalizedPath, dirName;
 import std.stdio;
 
@@ -228,6 +229,8 @@ mixin template SettingsTemplate()
 {
     struct Settings
     {
+        import std.path : isAbsolute, isValidPath, buildPath;
+
         enum defaultFileName = "dotfim.json";
 
         // set when this is the first time the git Repo is synced
@@ -276,7 +279,29 @@ mixin template SettingsTemplate()
         @property void gitPath(string newEntry) {
             this.internal.gitPath = newEntry; }
         @property void gitRepo(string newEntry) {
-            this.internal.gitRepo = newEntry; }
+            if (Git.exists(newEntry))
+            {
+                this.internal.gitRepo = newEntry;
+            }
+            else if (newEntry.isValidPath)
+            {
+                this.internal.gitRepo = newEntry;
+                if (newEntry.isAbsolute)
+                    this.internal.gitRepo = "file://"~newEntry;
+                else
+                {
+                    import std.file : getcwd;
+                    this.internal.gitRepo = "file://"
+                        ~ buildPath(getcwd(), newEntry.asNormalizedPath
+                                             .to!string);
+                }
+
+                enforce(Git.exists(this.gitRepo), "Repository \"" ~ this.gitRepo ~
+                        "\" is not reachable or does not exist.");
+            }
+            else
+                enforce(false, "Invalid repository: \"" ~ newEntry ~ "\"");
+        }
 
         this(this)
         {
@@ -291,7 +316,6 @@ mixin template SettingsTemplate()
         this(in string settingsFileOrDir)
         {
             import std.file : readText, exists;
-            import std.exception : enforce;
 
             this.settingsFile = settingsFileOrDir;
 

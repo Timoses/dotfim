@@ -39,7 +39,6 @@ version(unittest)
         settings.bFirstSync = false;
         settings.dotPath = dotfolder;
         settings.gitPath = gitfolder;
-        settings.gitRepo = remotefolder;
         settings.settingsFile = settingsfile;
 
         testfile = dotfolder.buildPath(Testdotfile.name);
@@ -69,8 +68,9 @@ TestDotfile line 3)";
         Git.staticExecute(remotefolder, "init", "--bare");
         import dotfim.cmd : Sync;
         Sync s;
+        settings.gitRepo = remotefolder;
         s.gitRepo = remotefolder;
-        s.settingsFile = settingsfile;
+        settings.settingsFile = settingsfile;
         return s.setup(settings);
     }
 }
