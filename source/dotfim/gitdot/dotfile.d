@@ -31,7 +31,14 @@ class Dotfile
     {
         this.file = file;
         this._headerLine = managedHeader;
+        this.sectionHandler = new SectionHandler(commentIndicator);
 
+        if (!exists(this.file))
+        {
+            std.file.write(this.file, "");
+            this.managed = false;
+            return;
+        }
         // Read content of home dotfile
         File home = File(this.file, "r");
         foreach(line; home.byLine)
@@ -39,8 +46,6 @@ class Dotfile
             this._rawLines ~= line.to!string;
         }
         home.close;
-
-        this.sectionHandler = new SectionHandler(commentIndicator);
 
         import std.range : empty;
         string[] customLines;
