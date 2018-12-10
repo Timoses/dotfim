@@ -66,8 +66,8 @@ TestDotfile line 3)";
     {
         Testdotfile.create;
         Git.staticExecute(remotefolder, "init", "--bare");
-        import dotfim.cmd : Sync;
-        Sync s;
+        import dotfim.cmd : Init;
+        Init s;
         settings.gitRepo = remotefolder;
         s.gitRepo = remotefolder;
         settings.settingsFile = settingsfile;

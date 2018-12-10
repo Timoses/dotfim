@@ -343,7 +343,7 @@ unittest
 {
     import std.stdio;
     import dotfim.util.test;
-    import dotfim.cmd : Add, Sync;
+    import dotfim.cmd : Add, Init;
 
     string oldGitHash;
     enum string checkHash = q{

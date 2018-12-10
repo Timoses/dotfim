@@ -7,7 +7,7 @@ import dotfim.dotfim;
 public import dotfim.cmd.add;
 public import dotfim.cmd.list;
 public import dotfim.cmd.remove;
-public import dotfim.cmd.sync;
+public import dotfim.cmd.init;
 public import dotfim.cmd.test;
 public import dotfim.cmd.update;
 public import dotfim.cmd.unsync;
@@ -24,7 +24,7 @@ class CmdHandler
         auto options = DotfileManager.Options.process(args);
         if (options.bNeededHelp) return;
 
-        // the start index of args to pass to cmd (e.g. add, remove, sync);
+        // the start index of args to pass to cmd (e.g. add, remove, init);
         int start = 2;
 
         if (args.length == 1)
@@ -45,8 +45,8 @@ class CmdHandler
                     Remove(CreateInstance(options),
                             args[start..$]);
                     break;
-                case "sync":
-                    Sync(getcwd(), args[start..$]);
+                case "init":
+                    Init(getcwd(), args[start..$]);
                     break;
                 case "unsync":
                     Unsync(CreateInstance(options));

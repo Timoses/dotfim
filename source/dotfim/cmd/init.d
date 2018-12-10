@@ -1,4 +1,4 @@
-module dotfim.cmd.sync;
+module dotfim.cmd.init;
 
 import std.algorithm : canFind;
 import std.exception : enforce;
@@ -8,7 +8,7 @@ import std.stdio : writeln, readln, write;
 import dotfim.dotfim;
 import dotfim.util.ui;
 
-struct Sync
+struct Init
 {
     string gitRepo;
     string dir;
@@ -16,7 +16,7 @@ struct Sync
     this(string dir, string[] args = null)
     {
         import std.exception : enforce;
-        enforce(args, "Usage: dotfim sync <repoURL>");
+        enforce(args, "Usage: dotfim init <repoURL>");
 
         this.dir = dir;
 
@@ -119,7 +119,7 @@ struct Sync
                 string question =
                     "DotfiM is already set up to sync with the following settings:\n"
                     ~ "\t" ~ settings.internal.to!string ~ "\n"
-                    ~ "Syncing will delete old setup. Continue? (y/n): ";
+                    ~ "Initializing will delete old setup. Continue? (y/n): ";
 
                 import std.exception : enforce;
                 enforce(askContinue(question, "y"), "Aborted by user");

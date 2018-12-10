@@ -30,7 +30,7 @@ struct Test
 
         exec();
 
-        writeln("Start with 'cd " ~ this.dir ~ " && dotfim sync repo/'");
+        writeln("Start with 'cd " ~ this.dir ~ " && dotfim init repo/'");
     }
 
     private void exec()

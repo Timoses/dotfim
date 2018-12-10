@@ -320,7 +320,7 @@ mixin template SettingsTemplate()
             this.settingsFile = settingsFileOrDir;
 
             enforce(exists(this.settingsFile),
-                "\""~this.settingsFile~"\" does not exist. Please run dotfim sync");
+                "\""~this.settingsFile~"\" does not exist. Please run dotfim init");
 
             import std.json;
             auto json = parseJSON(readText(this.settingsFile));
@@ -328,7 +328,7 @@ mixin template SettingsTemplate()
             // The settings json must contain our entries
             enforce("dotPath" in json && "gitRepo" in json
                     && "gitPath" in json,
-                    "Please run dotfim sync");
+                    "Please run dotfim init");
 
             this.dotPath = json["dotPath"].str;
             this.gitPath = json["gitPath"].str;
