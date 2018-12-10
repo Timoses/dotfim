@@ -10,15 +10,16 @@ import dotfim.util.ui;
 
 struct Sync
 {
-    string settingsFile;
     string gitRepo;
+    string dir;
 
-    this(string settingsFile, string[] args = null)
+    this(string dir, string[] args = null)
     {
         import std.exception : enforce;
         enforce(args, "Usage: dotfim sync <repoURL>");
 
-        this.settingsFile = settingsFile;
+        this.dir = dir;
+
         // TODO: validate git repo uri?
         this.gitRepo = args[0];
 
@@ -113,7 +114,7 @@ struct Sync
             Settings settings;
             try
             {
-                settings = Settings(settingsFile);
+                settings = Settings(dir);
 
                 import std.conv : to;
                 string question =
@@ -130,7 +131,7 @@ struct Sync
             }
             catch (Exception e)
             {
-                // settingsFile seems corrupt
+                // settings seem corrupt
                 writeln("... No settings file found, will create new one");
 
                 // Generate default locations
@@ -167,7 +168,7 @@ struct Sync
             settings.gitPath = gitPath;
             settings.gitRepo = this.gitRepo;
 
-            settings.settingsFile = settingsFile;
+            settings.settingsFile = this.dir;
 
             return settings;
         }

@@ -1,5 +1,7 @@
 module dotfim.cmd;
 
+import std.file : getcwd;
+
 import dotfim.dotfim;
 
 public import dotfim.cmd.add;
@@ -12,12 +14,12 @@ public import dotfim.cmd.unsync;
 
 class CmdHandler
 {
-    static DotfileManager CreateInstance(string settingsFile, DotfileManager.Options options)
+    static DotfileManager CreateInstance(DotfileManager.Options options)
     {
-        return new DotfileManager(settingsFile, options);
+        return new DotfileManager(getcwd(), options);
     }
 
-    static void executeCLI(string[] args, string settingsFile)
+    static void executeCLI(string[] args)
     {
         auto options = DotfileManager.Options.process(args);
         if (options.bNeededHelp) return;
@@ -26,28 +28,28 @@ class CmdHandler
         int start = 2;
 
         if (args.length == 1)
-            Update(CreateInstance(settingsFile, options));
+            Update(CreateInstance(options));
         else
         {
             switch (args[1])
             {
                 case "add":
-                    Add(CreateInstance(settingsFile, options),
+                    Add(CreateInstance(options),
                             args[start..$]);
                     break;
                 case "list":
                 case "ls":
-                    List(CreateInstance(settingsFile, options));
+                    List(CreateInstance(options));
                     break;
                 case "remove":
-                    Remove(CreateInstance(settingsFile, options),
+                    Remove(CreateInstance(options),
                             args[start..$]);
                     break;
                 case "sync":
-                    Sync(settingsFile, args[start..$]);
+                    Sync(getcwd(), args[start..$]);
                     break;
                 case "unsync":
-                    Unsync(CreateInstance(settingsFile, options));
+                    Unsync(CreateInstance(options));
                     break;
                 case "test":
                     Test(args[start..$]);

@@ -26,9 +26,9 @@ class DotfileManager
     // paths or files relative to gitPath that should be excluded
     static string[] excludedDots = [".git", "cheatSheets"];
 
-    this(string settingsFile, Options options = Options())
+    this(string dir, Options options = Options())
     {
-        this.settings = Settings(settingsFile);
+        this.settings = Settings(dir);
         this.options = options;
         this();
     }
@@ -228,6 +228,8 @@ mixin template SettingsTemplate()
 {
     struct Settings
     {
+        enum defaultFileName = "dotfim.json";
+
         // set when this is the first time the git Repo is synced
         private bool _bFirstSync;
         @property bool isFirstSync() { return this._bFirstSync; }
@@ -237,7 +239,20 @@ mixin template SettingsTemplate()
         private bool _bInitialized;
         @property bool isInitialized() { return this._bInitialized; }
 
-        string settingsFile;
+        private string _settingsFile;
+        @property string settingsFile() { return this._settingsFile; }
+        @property void settingsFile(string settingsFileOrDir)
+        {
+            import std.file : isDir, exists;
+            import std.path : buildPath, extension;
+            if (settingsFileOrDir.extension == ".json")
+                this._settingsFile = settingsFileOrDir;
+            else if (settingsFileOrDir.exists && settingsFileOrDir.isDir)
+                this._settingsFile = buildPath(settingsFileOrDir, defaultFileName);
+            else
+                enforce(false,
+                    "Invalid settings file or folder: \"" ~ settingsFileOrDir ~ "\"");
+        }
 
         struct Internal
         {
@@ -273,17 +288,18 @@ mixin template SettingsTemplate()
             this._bInitialized = true;
         }
 
-        this(string settingsFile)
+        this(in string settingsFileOrDir)
         {
             import std.file : readText, exists;
             import std.exception : enforce;
 
-            this.settingsFile = settingsFile;
+            this.settingsFile = settingsFileOrDir;
 
-            enforce(exists(settingsFile), "No settings seem to be stored. Please run dotfim sync");
+            enforce(exists(this.settingsFile),
+                "\""~this.settingsFile~"\" does not exist. Please run dotfim sync");
 
             import std.json;
-            auto json = parseJSON(readText(settingsFile));
+            auto json = parseJSON(readText(this.settingsFile));
 
             // The settings json must contain our entries
             enforce("dotPath" in json && "gitRepo" in json
