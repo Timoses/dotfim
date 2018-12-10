@@ -35,9 +35,9 @@ class Git
         // if branchName does not exist create it
         if (execute!(ErrorMode.Ignore)("rev-parse", "--verify", branchName)
                 .status != 0)
-            execute("branch", branchName);
-
-        execute("checkout", branchName);
+            execute("checkout", "-b", branchName);
+        else
+            execute("checkout", branchName);
     }
 
     void commit(string commitMsg, bool amend = false)
