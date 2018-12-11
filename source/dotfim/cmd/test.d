@@ -134,3 +134,15 @@ struct Options
             );
     }
 }
+
+unittest
+{
+    import std.file : rmdirRecurse, exists;
+    string tmp = buildPath(tempDir(), "dotfim", "unittest-test");
+    if (tmp.exists) tmp.rmdirRecurse;
+    auto test = Test(["test", tmp]);
+    import dotfim.git;
+    assert(Git.exists(test.options.repodir));
+
+    rmdirRecurse(tmp);
+}
