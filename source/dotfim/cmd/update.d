@@ -341,20 +341,34 @@ struct Update
 
 unittest
 {
+    import std.file : tempDir, exists, rmdirRecurse;
+    import std.path : buildPath;
     import std.stdio;
-    import dotfim.util.test;
-    import dotfim.cmd : Add, Init;
+    import dotfim.cmd : Add, Init, Test;
 
+    string testpath = buildPath(tempDir(), "dotfim", "unittest-add");
+    if (testpath.exists) testpath.rmdirRecurse;
     string oldGitHash;
+    auto testenv = Test(testpath);
+    string settingsFile = buildPath(testenv.dir, "dotfim.json");
+    auto testfile = buildPath(testenv.options.dotdir, ".file3");
+
     enum string checkHash = q{
         assert(oldGitHash != dfm.git.hash, "Hash was not updated");
         oldGitHash = dfm.git.hash;
         };
+
     {
-        auto dfm = prepareExample();
+        DotfileManager.Settings settings;
+        settings.dotPath = testenv.options.dotdir;
+        settings.gitRepo = testenv.options.repodir;
+        settings.gitPath = buildPath(testenv.dir, "git");
+        settings.settingsFile = settingsFile;
+
+        auto dfm = Init.setup(settings);
         Update(dfm);
         oldGitHash = dfm.git.hash;
-        assert(dfm.gitdots.length == 0);
+        assert(dfm.gitdots.length == 2);
         Add(dfm, testfile);
         mixin(checkHash);
         auto gitdot = dfm.findGitDot(testfile);
@@ -368,8 +382,8 @@ unittest
         Update(dfm);
         mixin(checkHash);
     }
-    auto dfm = new DotfileManager(settingsfile);
-    assert(dfm.gitdots.length == 1);
+    auto dfm = new DotfileManager(settingsFile);
+    assert(dfm.gitdots.length == 3);
     auto gitdot = dfm.findGitDot(testfile);
     assert(gitdot);
     assert(gitdot.dotfile.gitLines == gitdot.gitfile.gitLines);

@@ -44,6 +44,11 @@ struct Test
                 ~ this.options.repodir ~ "'");
     }
 
+    this(string dir)
+    {
+        this(["test", dir]);
+    }
+
     private void exec()
     {
         import std.file : exists, dirEntries, mkdirRecurse, rmdirRecurse, SpanMode;
@@ -107,7 +112,7 @@ EOF"
         git.push(DotfileManager.dotfimGitBranch);
 
         // Dotfile
-        ["1"].each!(n => write(buildPath(this.options.dotdir, ".file"~n),
+        ["1","3"].each!(n => write(buildPath(this.options.dotdir, ".file"~n),
                    format(q"EOF
 dot%s line 1
 dot%s line 2
