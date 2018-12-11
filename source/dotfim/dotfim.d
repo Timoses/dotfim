@@ -201,26 +201,17 @@ mixin template OptionsTemplate()
 {
     struct Options
     {
-        bool bNeededHelp;
         bool bNoRemote;
 
-        static Options process(ref string[] inOptions)
+        import std.getopt;
+        GetoptResult result;
+        alias result this;
+        this(ref string[] args)
         {
-            Options options;
-            import std.getopt;
-
-            with(options)
-            {
-                auto rslt = getopt(inOptions,
-                        "no-remote", "Prevents any interaction with the remote repository (no push/pull)", &bNoRemote);
-
-                if (rslt.helpWanted)
-                {
-                    options.bNeededHelp = true;
-                    defaultGetoptPrinter("DotfiM - the following options are available:", rslt.options);
-                }
-            }
-            return options;
+            this.result = std.getopt.getopt(args,
+                std.getopt.config.stopOnFirstNonOption,
+                "no-remote", "Prevents any interaction with the remote repository (no push/pull)", &bNoRemote
+                );
         }
     }
 }

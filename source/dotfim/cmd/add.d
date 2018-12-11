@@ -15,14 +15,14 @@ struct Add
     string[] dotfiles;
 
     this(lazy DotfileManager dfm, const string arg)
-    { this(dfm, [arg]); }
+    { this(dfm, ["add", arg]); }
     this(lazy DotfileManager dfm, const string[] args = null)
     {
         import std.exception : enforce;
-        enforce(args, "Usage: dotfim add <file1> <file2> ... <fileN>");
+        enforce(args.length > 1, "Usage: dotfim add <file1> <file2> ... <fileN>");
 
         // sanitize paths
-        this.dotfiles = args.map!((dotfile) =>
+        this.dotfiles = args[1..$].map!((dotfile) =>
                 asNormalizedPath(asAbsolutePath(dotfile).array).array
                 .to!string).array;
 

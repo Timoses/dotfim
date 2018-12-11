@@ -16,11 +16,11 @@ struct Init
     this(string dir, string[] args = null)
     {
         import std.exception : enforce;
-        enforce(args, "Usage: dotfim init <repoURL>");
+        enforce(args.length > 1, "Usage: dotfim init <repoURL>");
 
         this.dir = dir;
 
-        this.gitRepo = args[0];
+        this.gitRepo = args[1];
 
         import dotfim.cmd.update;
         Update(exec());

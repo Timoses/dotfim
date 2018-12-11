@@ -21,11 +21,12 @@ class CmdHandler
 
     static void executeCLI(string[] args)
     {
-        auto options = DotfileManager.Options.process(args);
-        if (options.bNeededHelp) return;
+        import dotfim.util.getopt;
+        auto options = process!(DotfileManager.Options)(args);
+        if (options.helpWanted) return;
 
         // the start index of args to pass to cmd (e.g. add, remove, init);
-        int start = 2;
+        int start = 1;
 
         if (args.length == 1)
             Update(CreateInstance(options));

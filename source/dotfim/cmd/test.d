@@ -5,6 +5,7 @@ module dotfim.cmd.test;
 import std.array : array;
 import std.conv : to;
 import std.exception : enforce;
+import std.file : tempDir;
 import std.path : asAbsolutePath, asNormalizedPath, buildPath;
 
 import dotfim.dotfim;
@@ -14,23 +15,33 @@ struct Test
 {
     // Directory where test environment should be set up
     immutable string dir;
+    // Temporary git directory
     immutable string gitdir;
-    immutable string dotdir;
-    immutable string repodir;
 
+    Options options;
 
-    this(const string[] args)
+    this(string[] args)
     {
-        enforce(args.length == 1, "Usage: dotfim test <directory>");
+        import dotfim.util.getopt;
+        this.options = process!Options(args);
+        if (this.options.helpWanted)
+            return;
 
-        this.dir = args[0].asAbsolutePath.asNormalizedPath.array.to!string;
-        this.gitdir = buildPath(this.dir, "git");
-        this.dotdir = buildPath(this.dir, "dot");
-        this.repodir = buildPath(this.dir, "repo.git");
+        enforce(args.length >= 2, "Usage: dotfim test <directory>");
+
+        this.dir = args[1].asAbsolutePath.asNormalizedPath.array.to!string;
+        this.gitdir = buildPath(tempDir, "dotfim", "gitdir");
+        with(this.options)
+        {
+            import std.string : empty;
+            dotdir = dotdir.empty ? buildPath(this.dir, "dot") : dotdir;
+            repodir = repodir.empty ? buildPath(this.dir, "repo.git") : repodir;
+        }
 
         exec();
 
-        writeln("Start with 'cd " ~ this.dir ~ " && dotfim init repo/'");
+        writeln("Start with 'cd " ~ this.dir ~ " && dotfim init "
+                ~ this.options.repodir ~ "'");
     }
 
     private void exec()
@@ -47,9 +58,9 @@ struct Test
         createTestFiles();
 
         DotfileManager.Settings settings;
-        settings.dotPath = this.dotdir;
+        settings.dotPath = this.options.dotdir;
         settings.gitPath = this.gitdir;
-        settings.gitRepo = this.repodir;
+        settings.gitRepo = this.options.repodir;
 
         settings.settingsFile = buildPath(this.dir, "dotfim.json");
 
@@ -61,11 +72,10 @@ struct Test
         import std.file : mkdir;
         import std.process : execute;
 
-        mkdir(repodir);
-        execute(["git", "init", "--bare", repodir]);
-        mkdir(gitdir);
-        execute(["git", "clone", repodir, gitdir]);
-        mkdir(dotdir);
+        mkdir(options.repodir);
+        execute(["git", "init", "--bare", options.repodir]);
+        execute(["git", "clone", options.repodir, this.gitdir]);
+        mkdir(options.dotdir);
 
     }
 
@@ -97,11 +107,30 @@ EOF"
         git.push(DotfileManager.dotfimGitBranch);
 
         // Dotfile
-        ["1"].each!(n => write(buildPath(this.dotdir, ".file"~n),
+        ["1"].each!(n => write(buildPath(this.options.dotdir, ".file"~n),
                    format(q"EOF
 dot%s line 1
 dot%s line 2
 EOF"
                 , n, n)));
+    }
+}
+
+struct Options
+{
+    string dotdir;
+    string repodir;
+
+    import std.getopt;
+    GetoptResult result;
+    alias result this;
+
+    this(ref string[] args)
+    {
+        this.result = std.getopt.getopt(args,
+            std.getopt.config.stopOnFirstNonOption,
+            "dotdir", "<dir>: Create test home directory in <dir>", &dotdir,
+            "repodir", "<repo>: Create test remote repository in <repo>", &repodir,
+            );
     }
 }
