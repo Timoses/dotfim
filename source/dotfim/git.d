@@ -1,6 +1,8 @@
 module dotfim.git;
 
+import std.exception : enforce;
 import std.stdio;
+
 
 class Git
 {
@@ -14,12 +16,56 @@ class Git
 
     this(string gitDir)
     {
+        import std.path : buildPath;
+        import std.file : exists;
+        enforce(buildPath(gitDir, ".git").exists,
+            "\"" ~ gitDir ~ "\" is not a valid git folder");
+
         this.dir = gitDir;
     }
 
     static bool exists(string repo)
     {
         return Git.staticExecute!(ErrorMode.Ignore)("", "ls-remote", repo).status == 0;
+    }
+
+    static bool branchExists(string repo, string branch)
+    {
+        auto res = Git.staticExecute!(Git.ErrorMode.Ignore)
+            ("", "ls-remote", "--heads", repo);
+        import std.algorithm : canFind;
+        return res.output.canFind("refs/heads/" ~ branch);
+    }
+
+    static string toRepoURL(string path)
+    {
+        import std.path : isValidPath, isAbsolute, buildPath, asNormalizedPath;
+        string url;
+        if (Git.exists(path))
+        {
+            url = path;
+        }
+        else if (path.isValidPath)
+        {
+            url = path;
+            if (path.isAbsolute)
+                url = "file://"~path;
+            else
+            {
+                import std.file : getcwd;
+                import std.conv : to;
+                url = "file://"
+                    ~ buildPath(getcwd(), path.asNormalizedPath
+                                         .to!string);
+            }
+
+            enforce(Git.exists(url), "Repository \"" ~ url ~
+                    "\" is not reachable or does not exist.");
+        }
+        else
+            enforce(false, "Invalid repository: \"" ~ path ~ "\"");
+
+        return url;
     }
 
     void saveBranch()
@@ -69,7 +115,6 @@ class Git
     {
         if (branchName == "")
             branchName = execute("symbolic-ref", "--quiet", "--short", "HEAD").output;
-        import std.exception : enforce;
         enforce(branchName != "", "Unable to determine branch for remote hash.");
         import std.string : chomp;
         auto res = execute!(ErrorMode.Ignore)("rev-parse", "origin/dotfim");
@@ -89,7 +134,6 @@ class Git
     static auto staticExecute(ErrorMode emode = ErrorMode.Throw, string file = __FILE__, int line = __LINE__)(string location, string[] cmds ...)
     {
        import std.process : execute;
-       import std.exception : enforce;
        import std.string : empty;
 
        auto pre = location.empty ? ["git"] : ["git", "-C", location];
@@ -149,7 +193,6 @@ class Git
 
         // merging should create a new commit
         string mergedHash = this.hash;
-        import std.exception : enforce;
         // could this happen when fast-forwarding?...
         //  however, we should never start merging then in the first place
         enforce(mergedHash != divergedHash, "Apparently the "

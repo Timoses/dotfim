@@ -70,7 +70,7 @@ Pull from remote gitRepo, check for changes, update dotfiles and gitfiles and ev
 ----
 **`dotfim init <gitRepo>`**
 
-Create a folder for the git repository and run `dotfim`.
+Initializes the git folder by cloning `<gitRepo>` into the present working directory and prompts the user for its `$HOME` directory.
 
 ----
 **`dotim add <dotfile1> <dotfile2> ... <dotfileN>`**

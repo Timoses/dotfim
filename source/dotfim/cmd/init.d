@@ -1,175 +1,139 @@
 module dotfim.cmd.init;
 
-import std.algorithm : canFind;
+import std.algorithm : canFind, map;
 import std.exception : enforce;
-import std.path : buildPath, dirName, isValidPath;
+import std.file : exists, mkdir, rmdir, rmdirRecurse;
+import std.path : asAbsolutePath, asNormalizedPath, buildPath, dirName, isValidPath;
 import std.stdio : writeln, readln, write;
+import std.string : empty;
 
 import dotfim.dotfim;
+import dotfim.git;
 import dotfim.util.ui;
 
+
+// Initializes the dotfim git folder, ensures a 'dotfim' branch exists and
+// writes the dotfim configuration file into it
+// If option '--gitdir' is not passed, uses the git Repo URL basename as the git
+// folder in the current working directory
 struct Init
 {
-    string gitRepo;
-    string dir;
+    enum string Usage = "dotfim init <repoURL>";
+    string repodir;
 
-    this(string dir, string[] args = null)
+    Options options;
+    alias options this ;
+
+    this(string[] args = null)
     {
-        import std.exception : enforce;
-        enforce(args.length > 1, "Usage: dotfim init <repoURL>");
+        this.options = Options(args);
+        if (this.options.helpWanted)
+            return;
 
-        this.dir = dir;
+        scope(failure) this.options.printHelp;
+        enforce(args.length > 1, "Wrong number of arguments");
 
-        this.gitRepo = args[1];
+        this.repodir = Git.toRepoURL(args[1]);
 
-        import dotfim.cmd.update;
-        Update(exec());
-    }
-
-    private DotfileManager exec()
-    {
-        DotfileManager.Settings settings = interrogateUser();
-        return setup(settings);
-    }
-
-    // Use settings to create folders and clone repository (gitRepo)
-    // into git folder
-    static DotfileManager setup(DotfileManager.Settings settings)
-    {
-        import std.file : exists, mkdir, rmdir;
-        import std.file : rmdirRecurse;
-
-        string[] pathsCreated;
-        scope(failure)
+        if (this.options.gitdir.empty)
         {
-            import std.file : rmdirRecurse;
-            foreach (path; pathsCreated)
-            {
-                if (exists(path))
-                {
-            //        rmdirRecurse(path);
-                }
-            }
+            import std.path : baseName;
+            this.options.gitdir = this.repodir.baseName;
         }
-        with(settings)
+
+        exec();
+    }
+
+    debug {
+        import dotfim.cmd.test;
+        this(Test testenv)
         {
-            if (!exists(dotPath))
-            {
-                mkdir(dotPath);
-                pathsCreated ~= dotPath;
-            }
+            this.repodir = testenv.repodir;
+            this.dotdir = testenv.dotdir;
+            this.gitdir = testenv.gitdir;
+        }
+    }
 
-            mkdir(gitPath);
-            pathsCreated ~= gitPath;
+    DotfileManager exec()
+    {
+        Git git;
+        immutable string dfbranch = DotfileManager.dotfimGitBranch;
 
-            import dotfim.git;
-            immutable string dfbranch = DotfileManager.dotfimGitBranch;
-            // first check if remote has
-            auto res = Git.staticExecute!(Git.ErrorMode.Ignore)
-                ("", "ls-remote", "--heads", settings.gitRepo);
-            // dotfim branch exists!
-            if (res.output.canFind("refs/heads/" ~ dfbranch))
+        enforce(!this.gitdir.exists, "Git directory \"" ~ this.gitdir
+                ~ "\" already exists");
+
+        { // Clone repository into gitdir
+            if (Git.branchExists(this.repodir, dfbranch))
             {
-                res = Git.staticExecute!(Git.ErrorMode.Ignore)
-                    ("", "clone", "--single-branch", "-b",
-                     dfbranch, settings.gitRepo, gitPath);
+                auto res = Git.staticExecute("", "clone", "--single-branch", "-b",
+                     dfbranch, this.repodir, this.gitdir);
             }
             else
             {
-                res = Git.staticExecute!(Git.ErrorMode.Ignore)
-                    ("", "clone", settings.gitRepo, gitPath);
-                Git.staticExecute(gitPath, "checkout", "-b", dfbranch);
-
+                auto res = Git.staticExecute!(Git.ErrorMode.Ignore)
+                    ("", "clone", this.repodir, this.gitdir);
+                Git.staticExecute(this.gitdir, "checkout", "-b", dfbranch);
             }
-            enforce(res.status == 0, "Could not clone the repository " ~
-                    settings.gitRepo ~ "\n Git Error: " ~ res.output);
-
 
             // Create an initial commit if repository is empty
-            res = Git.staticExecute!(Git.ErrorMode.Ignore)
-                (gitPath, "rev-parse", "--abbrev-ref", "HEAD");
+            auto res = Git.staticExecute!(Git.ErrorMode.Ignore)
+                (this.gitdir, "rev-parse", "--abbrev-ref", "HEAD");
             if (res.status != 0)
             {
-                Git.staticExecute(gitPath, "commit", "--allow-empty",
+                Git.staticExecute(this.gitdir, "commit", "--allow-empty",
                         "-m", "Initial commit");
-                Git.staticExecute(gitPath, "push", "origin", dfbranch);
+                Git.staticExecute(this.gitdir, "push", "origin", dfbranch);
             }
-
-
-            // save the settings to disk
-            save();
         }
 
-        return new DotfileManager(settings);
+        DotfileManager.Settings settings;
+        import std.process : environment;
+        settings.settingsFile = this.gitdir;
+        settings.dotPath = this.dotdir.empty ?
+                             askPath("Your home path", environment.get("HOME"))
+                             : this.dotdir;
+
+        settings.save();
+
+        return new DotfileManager(settings);;
+    }
+}
+
+struct Options
+{
+    private string _dotdir;
+    @property string dotdir() { return this._dotdir; }
+    @property void dotdir(string dir) {
+        this._dotdir = dir.asAbsolutePath.asNormalizedPath.to!string; }
+    private string _gitdir;
+    @property string gitdir() { return this._gitdir; }
+    @property void gitdir(string dir) {
+        this._gitdir = dir.asAbsolutePath.asNormalizedPath.to!string; }
+
+    import std.getopt;
+    GetoptResult result;
+    alias result this;
+
+    this(ref string[] args)
+    {
+        string gitdir;
+        string dotdir;
+        this.result = std.getopt.getopt(args,
+            "dotdir", "<dir>: Set path where dotfiles will be synced to", &dotdir,
+            "gitdir", "<dir>: Clone repository contents into <dir>", &gitdir,
+            );
+
+        this.gitdir = gitdir;
+        this.dotdir = dotdir;
+
+        if (this.result.helpWanted)
+            printHelp();
     }
 
-    DotfileManager.Settings interrogateUser()
+    void printHelp()
     {
-        string dotPath;
-        string gitPath;
+        defaultGetoptPrinter("Usage: " ~ Init.Usage ~ "\n"
+                , result.options);
 
-        with (DotfileManager)
-        {
-            Settings settings;
-            try
-            {
-                settings = Settings(dir);
-
-                import std.conv : to;
-                string question =
-                    "DotfiM is already set up to sync with the following settings:\n"
-                    ~ "\t" ~ settings.internal.to!string ~ "\n"
-                    ~ "Initializing will delete old setup. Continue? (y/n): ";
-
-                import std.exception : enforce;
-                enforce(askContinue(question, "y"), "Aborted by user");
-
-                // keep current path setup
-                dotPath = settings.dotPath;
-                gitPath = settings.gitPath;
-            }
-            catch (Exception e)
-            {
-                // settings seem corrupt
-                writeln("... No settings file found, will create new one");
-
-                // Generate default locations
-                import std.process : environment;
-                dotPath = environment.get("HOME");
-
-                import std.file;
-                gitPath = buildPath(thisExePath().dirName, "dotfimRepo");
-            }
-
-            writeln("Confirm defaults with ENTER or type desired option");
-
-            // Ask user for desired locations
-            dotPath = askPath("Your home path", dotPath);
-            gitPath = askPath("DotfiM Git Repository Path", gitPath);
-
-            import std.file : exists;
-            // ask if an existing gitPath should be deleted
-            if (exists(gitPath))
-            {
-                import std.exception : enforce;
-                enforce(askContinue("The given git repository path already exists!\n\t!!! Continuing will delete the git repository folder !!!"
-                            ~ "\nContinue? (y/n): ", "y"),
-                        "Aborted by User.");
-
-                import std.file : rmdirRecurse;
-                rmdirRecurse(gitPath);
-            }
-
-
-            settings.bFirstSync = true;
-
-            settings.dotPath = dotPath;
-            settings.gitPath = gitPath;
-            settings.gitRepo = this.gitRepo;
-
-            settings.settingsFile = this.dir;
-
-            return settings;
-        }
     }
 }

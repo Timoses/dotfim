@@ -21,8 +21,7 @@ class CmdHandler
 
     static void executeCLI(string[] args)
     {
-        import dotfim.util.getopt;
-        auto options = process!(DotfileManager.Options)(args);
+        auto options = DotfileManager.Options(args);
         if (options.helpWanted) return;
 
         // the start index of args to pass to cmd (e.g. add, remove, init);
@@ -47,7 +46,7 @@ class CmdHandler
                             args[start..$]);
                     break;
                 case "init":
-                    Init(getcwd(), args[start..$]);
+                    Init(args[start..$]);
                     break;
                 case "unsync":
                     Unsync(CreateInstance(options));

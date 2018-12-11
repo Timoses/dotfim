@@ -350,7 +350,6 @@ unittest
     if (testpath.exists) testpath.rmdirRecurse;
     string oldGitHash;
     auto testenv = Test(testpath);
-    string settingsFile = buildPath(testenv.dir, "dotfim.json");
     auto testfile = buildPath(testenv.options.dotdir, ".file3");
 
     enum string checkHash = q{
@@ -359,13 +358,8 @@ unittest
         };
 
     {
-        DotfileManager.Settings settings;
-        settings.dotPath = testenv.options.dotdir;
-        settings.gitRepo = testenv.options.repodir;
-        settings.gitPath = buildPath(testenv.dir, "git");
-        settings.settingsFile = settingsFile;
+        auto dfm = Init(testenv).exec();
 
-        auto dfm = Init.setup(settings);
         Update(dfm);
         oldGitHash = dfm.git.hash;
         assert(dfm.gitdots.length == 2);
@@ -382,7 +376,7 @@ unittest
         Update(dfm);
         mixin(checkHash);
     }
-    auto dfm = new DotfileManager(settingsFile);
+    auto dfm = new DotfileManager(testenv.gitdir);
     assert(dfm.gitdots.length == 3);
     auto gitdot = dfm.findGitDot(testfile);
     assert(gitdot);

@@ -1,36 +1,38 @@
 module dotfim.cmd.test;
 
-        import std.stdio;
-
 import std.array : array;
 import std.conv : to;
 import std.exception : enforce;
 import std.file : tempDir;
 import std.path : asAbsolutePath, asNormalizedPath, buildPath;
+import std.stdio : writeln;
 
 import dotfim.dotfim;
 
 
 struct Test
 {
+    enum Usage = "dotfim test <directory>";
+
     // Directory where test environment should be set up
     immutable string dir;
-    // Temporary git directory
+    // git directory
     immutable string gitdir;
 
     Options options;
+    alias options this;
 
     this(string[] args)
     {
-        import dotfim.util.getopt;
-        this.options = process!Options(args);
+        this.options = Options(args);
         if (this.options.helpWanted)
             return;
 
-        enforce(args.length >= 2, "Usage: dotfim test <directory>");
+        scope(failure) this.options.printHelp();
+        enforce(args.length >= 2, "Wrong number of arguments");
 
         this.dir = args[1].asAbsolutePath.asNormalizedPath.array.to!string;
-        this.gitdir = buildPath(tempDir, "dotfim", "gitdir");
+        this.gitdir = buildPath(this.dir, "git");
         with(this.options)
         {
             import std.string : empty;
@@ -61,13 +63,6 @@ struct Test
 
         createTestDirectory();
         createTestFiles();
-
-        DotfileManager.Settings settings;
-        settings.dotPath = this.options.dotdir;
-        settings.gitPath = this.gitdir;
-        settings.gitRepo = this.options.repodir;
-
-        settings.settingsFile = buildPath(this.dir, "dotfim.json");
 
         rmdirRecurse(this.gitdir);
     }
@@ -137,6 +132,16 @@ struct Options
             "dotdir", "<dir>: Create test home directory in <dir>", &dotdir,
             "repodir", "<repo>: Create test remote repository in <repo>", &repodir,
             );
+
+        if (this.helpWanted)
+            printHelp();
+    }
+
+    void printHelp()
+    {
+        defaultGetoptPrinter("Usage: " ~ Test.Usage ~ "\n"
+                , result.options);
+
     }
 }
 

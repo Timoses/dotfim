@@ -10,7 +10,6 @@ import dotfim.util;
 
 class DotfileManager
 {
-
     enum dotfimGitBranch = "dotfim";
 
     mixin OptionsTemplate;
@@ -212,6 +211,16 @@ mixin template OptionsTemplate()
                 std.getopt.config.stopOnFirstNonOption,
                 "no-remote", "Prevents any interaction with the remote repository (no push/pull)", &bNoRemote
                 );
+
+            if (this.helpWanted)
+                printHelp();
+        }
+
+        void printHelp()
+        {
+            defaultGetoptPrinter("Usage: dotfim <Option> <Command> <Command Options>" ~ "\n"
+                    , result.options);
+
         }
     }
 }
@@ -248,60 +257,35 @@ mixin template SettingsTemplate()
                     "Invalid settings file or folder: \"" ~ settingsFileOrDir ~ "\"");
         }
 
+        @property string gitPath() {
+            import std.path : dirName;
+            return this.settingsFile.dirName;
+        }
+
         struct Internal
         {
             // The path where the dotfiles should be synchronized to
             string dotPath;
-
-            // The path from where dotfiles are synchronized from
-            // (must be a path to a git repository)
-            string gitPath;
-
-            // The remote git Repository URI
-            string gitRepo;
         }
         Internal internal;
 
         @property string dotPath() { return this.internal.dotPath; }
-        @property string gitPath() { return this.internal.gitPath; }
-        @property string gitRepo() { return this.internal.gitRepo; }
         @property void dotPath(string newEntry) {
             this.internal.dotPath = newEntry; }
-        @property void gitPath(string newEntry) {
-            this.internal.gitPath = newEntry; }
-        @property void gitRepo(string newEntry) {
-            if (Git.exists(newEntry))
-            {
-                this.internal.gitRepo = newEntry;
-            }
-            else if (newEntry.isValidPath)
-            {
-                this.internal.gitRepo = newEntry;
-                if (newEntry.isAbsolute)
-                    this.internal.gitRepo = "file://"~newEntry;
-                else
-                {
-                    import std.file : getcwd;
-                    this.internal.gitRepo = "file://"
-                        ~ buildPath(getcwd(), newEntry.asNormalizedPath
-                                             .to!string);
-                }
-
-                enforce(Git.exists(this.gitRepo), "Repository \"" ~ this.gitRepo ~
-                        "\" is not reachable or does not exist.");
-            }
-            else
-                enforce(false, "Invalid repository: \"" ~ newEntry ~ "\"");
-        }
 
         this(this)
         {
             assert(
-                    this.internal.dotPath != "" &&
-                    this.internal.gitPath != "" &&
-                    this.internal.gitRepo != ""
+                    this.internal.dotPath != ""
                   );
             this._bInitialized = true;
+        }
+
+        static isValid(in string settingsFileOrDir)
+        {
+            try { Settings(settingsFileOrDir); }
+            catch(Exception e) { return false; }
+            return true;
         }
 
         this(in string settingsFileOrDir)
@@ -317,13 +301,10 @@ mixin template SettingsTemplate()
             auto json = parseJSON(readText(this.settingsFile));
 
             // The settings json must contain our entries
-            enforce("dotPath" in json && "gitRepo" in json
-                    && "gitPath" in json,
+            enforce("dotPath" in json,
                     "Please run dotfim init");
 
             this.dotPath = json["dotPath"].str;
-            this.gitPath = json["gitPath"].str;
-            this.gitRepo = json["gitRepo"].str;
 
             this._bInitialized = true;
         }
