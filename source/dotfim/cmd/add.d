@@ -36,9 +36,9 @@ struct Add
     // If the dotfile does not exist create it
     private void exec()
     {
-        // update now since after add() new gitHash is commited eventually
-        import dotfim.cmd.update;
-        Update(this.dfm);
+        // sync now since after add() new gitHash is commited eventually
+        import dotfim.cmd.sync;
+        Sync(this.dfm);
 
         writeln("--------DotfiM Add----------");
 
@@ -130,9 +130,9 @@ struct Add
 
             commitAndPush("DotfiM Add: \n\n" ~ addedFiles);
 
-            // Update dotfiles with new gitHash version
+            // Sync dotfiles with new gitHash version
             // and add new dotfiles
-            Update(this.dfm);
+            Sync(this.dfm);
         }
     }
 }

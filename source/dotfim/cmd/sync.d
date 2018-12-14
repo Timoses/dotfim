@@ -1,8 +1,8 @@
-module dotfim.cmd.update;
+module dotfim.cmd.sync;
 
 import dotfim.dotfim;
 
-struct Update
+struct Sync
 {
     DotfileManager dfm;
     this(lazy DotfileManager dfm)
@@ -13,8 +13,8 @@ struct Update
     }
 
     /**
-     * Update:
-     *  Update will proceed as follows:
+     * Sync:
+     *  Sync will proceed as follows:
      *   1. Collect files:
      *        - dfUpdatees: remote update available for dotfile
      *              local git hash != remote git hash
@@ -205,7 +205,7 @@ struct Update
                     }
                     else
                     {
-                        throw new Exception("Merge failed... Aborted dotfim update!");
+                        throw new Exception("Merge failed... Aborted dotfim sync!");
                     }
                 }
                 // Second: If branches had diverged, merge them back together
@@ -237,7 +237,7 @@ struct Update
                     }
                     else
                     {
-                        throw new Exception("Merge failed... Aborted dotfim update!");
+                        throw new Exception("Merge failed... Aborted dotfim sync!");
                     }
                 }
             }
@@ -263,7 +263,7 @@ struct Update
                     import std.string : chomp;
                     changedFiles = changedFiles.chomp;
 
-                    commitAndPush("DotfiM Update: \n\n" ~ changedFiles);
+                    commitAndPush("DotfiM Sync: \n\n" ~ changedFiles);
                 }
                 catch (Exception e)
                 {
@@ -271,7 +271,7 @@ struct Update
                     writeln(e.msg);
                     git.execute(["reset", "--hard"]);
                     writeln("Error occured while updating the git repository. Please fix issues and try again.");
-                    writeln("Stopping update.");
+                    writeln("Stopping sync.");
                     return;
                 }
 
@@ -279,7 +279,7 @@ struct Update
                 {
                     import std.stdio : writeln;
                     curGitHash = git.hash;
-                    writeln("Git repo files updated:");
+                    writeln("Git repo files synced:");
                     import std.algorithm : map;
                     import std.string : splitLines, join;
                     writeln(changedFiles
@@ -301,7 +301,7 @@ struct Update
             else if (gfUpdatees.length > 0 || dfUpdatees.length > 0)
             {
                 import std.stdio : writeln;
-                writeln("Dotfiles updated:");
+                writeln("Dotfiles synced:");
 
                 void dfUpdate(GitDot[] dfs)
                 {
@@ -360,7 +360,7 @@ unittest
     {
         auto dfm = Init(testenv).exec();
 
-        Update(dfm);
+        Sync(dfm);
         oldGitHash = dfm.git.hash;
         assert(dfm.gitdots.length == 2);
         Add(dfm, testfile);
@@ -369,11 +369,11 @@ unittest
         assert(gitdot);
 
         // write entry
-        enum string testentry = "This is a test entry to be updated.";
+        enum string testentry = "This is a test entry to be synced.";
         auto dfile = gitdot.dotfile;
         dfile.gitLines = dfile.gitLines ~ testentry;
         dfile.write;
-        Update(dfm);
+        Sync(dfm);
         mixin(checkHash);
     }
     auto dfm = new DotfileManager(testenv.gitdir);

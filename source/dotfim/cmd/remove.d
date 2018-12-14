@@ -34,8 +34,8 @@ struct Remove
     // Also commits and pushes unmanaged gitfiles
     private void exec()
     {
-        import dotfim.cmd.update;
-        Update(this.dfm);
+        import dotfim.cmd.sync;
+        Sync(this.dfm);
 
         writeln("------------------------");
 
@@ -84,8 +84,8 @@ struct Remove
 
             writeln("------------------------");
 
-            import dotfim.cmd.update;
-            Update(this.dfm);
+            import dotfim.cmd.sync;
+            Sync(this.dfm);
         }
 
         import std.exception : enforce;

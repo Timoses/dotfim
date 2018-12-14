@@ -9,7 +9,7 @@ public import dotfim.cmd.list;
 public import dotfim.cmd.remove;
 public import dotfim.cmd.init;
 public import dotfim.cmd.test;
-public import dotfim.cmd.update;
+public import dotfim.cmd.sync;
 public import dotfim.cmd.unsync;
 
 class CmdHandler
@@ -69,7 +69,7 @@ EOS";
                     Init(args[start..$]);
                     break;
                 case "sync":
-                    Update(CreateInstance(options));
+                    Sync(CreateInstance(options));
                     break;
                 case "unsync":
                     Unsync(CreateInstance(options));
