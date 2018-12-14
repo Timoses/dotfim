@@ -295,7 +295,7 @@ mixin template SettingsTemplate()
             this.settingsFile = settingsFileOrDir;
 
             enforce(exists(this.settingsFile),
-                "\""~this.settingsFile~"\" does not exist. Please run dotfim init");
+                "No configuration found. Run dotfim in an initialized directory or run `dotfim init` to initialize.");
 
             import std.json;
             auto json = parseJSON(readText(this.settingsFile));
