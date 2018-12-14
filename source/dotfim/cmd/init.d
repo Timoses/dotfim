@@ -18,7 +18,7 @@ import dotfim.util.ui;
 // folder in the current working directory
 struct Init
 {
-    enum string Usage = "dotfim init <repoURL>";
+    enum string Usage = "dotfim init <repoURL> [<directory>]";
     string repodir;
 
     Options options;
@@ -34,6 +34,9 @@ struct Init
         enforce(args.length > 1, "Wrong number of arguments");
 
         this.repodir = Git.toRepoURL(args[1]);
+
+        if (args.length > 2)
+            this.options.gitdir = args[2];
 
         if (this.options.gitdir.empty)
         {

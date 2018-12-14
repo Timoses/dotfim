@@ -68,9 +68,9 @@ What's a [gitfile and dotfile](#gitfile-and-dotfile)?
 Pull from remote gitRepo, check for changes, update dotfiles and gitfiles and eventually commit local changes and push to remote.
 
 ----
-**`dotfim init <gitRepo>`**
+**`dotfim init <gitRepo> [<directory>]`
 
-Initializes the git folder by cloning `<gitRepo>` into the present working directory and prompts the user for its `$HOME` directory.
+Initializes the git folder by cloning `<gitRepo>` into the present working directory (or `<directory>` if given) and prompts the user for its `$HOME` directory.
 
 ----
 **`dotim add <dotfile1> <dotfile2> ... <dotfileN>`**
