@@ -49,16 +49,16 @@ struct Add
         {
             import std.algorithm : canFind;
 
-            // Check if file is residing in either dotPath or gitPath
+            // Check if file is residing in either dotdir or gitdir
             bool bIsGitFile =
-                file.canFind(settings.gitPath);
+                file.canFind(settings.gitdir);
             bool bIsDotFile = bIsGitFile ? false
-                : file.canFind(settings.dotPath);
+                : file.canFind(settings.dotdir);
 
             if (!(bIsGitFile || bIsDotFile))
             {
-                // can't add a file outside of dot-/gitPath
-                stderr.writeln("File ", file, " does neither reside within the dotfile path (", settings.dotPath, ") nor git path (", settings.gitPath, ")!\n\tSkipping");
+                // can't add a file outside of dot-/gitdir
+                stderr.writeln("File ", file, " does neither reside within the dotfile path (", settings.dotdir, ") nor git path (", settings.gitdir, ")!\n\tSkipping");
                 continue;
             }
 
@@ -72,16 +72,16 @@ struct Add
             auto assertNoEntry = () { assert(bIsGitFile && bIsDotFile); return "";};
 
             string relFile = asRelativePath(file,
-                    bIsGitFile ? settings.gitPath :
-                    bIsDotFile ? settings.dotPath :
+                    bIsGitFile ? settings.gitdir :
+                    bIsDotFile ? settings.dotdir :
                     assertNoEntry()).array;
 
             import std.file : exists;
             import std.path : buildPath;
             // Check if file exists as either git- or dotfile
-            bool bGitExists = exists(buildPath(settings.gitPath,
+            bool bGitExists = exists(buildPath(settings.gitdir,
                         relFile));
-            bool bDotExists = exists(buildPath(settings.dotPath,
+            bool bDotExists = exists(buildPath(settings.dotdir,
                         relFile));
 
             if (!(bGitExists || bDotExists))
@@ -103,8 +103,8 @@ struct Add
                 createdGitDots ~= GitDot.create(
                                           relFile,
                                           commentIndicator,
-                                          settings.gitPath,
-                                          settings.dotPath);
+                                          settings.gitdir,
+                                          settings.dotdir);
             }
             catch (Exception e)
             {
@@ -121,7 +121,7 @@ struct Add
             {
                 git.execute("add", gitdot.gitfile.file);
                 addedFiles ~= asRelativePath(gitdot.gitfile.file,
-                        settings.gitPath).array ~ "\n";
+                        settings.gitdir).array ~ "\n";
             }
 
             import std.algorithm : uniq;

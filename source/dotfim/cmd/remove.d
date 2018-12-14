@@ -60,7 +60,7 @@ struct Remove
 
             import std.range : array;
             unmanagedFiles ~= asRelativePath(found.gitfile.file,
-                        settings.gitPath).array ~ "\n";
+                        settings.gitdir).array ~ "\n";
 
             // write only local section to dotfile
             with (found.dotfile)

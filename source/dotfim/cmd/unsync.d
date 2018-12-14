@@ -43,8 +43,8 @@ struct Unsync
 
             // remove dotfim repo
             import std.file : rmdirRecurse, exists;
-            if (exists(settings.gitPath))
-                rmdirRecurse(settings.gitPath);
+            if (exists(settings.gitdir))
+                rmdirRecurse(settings.gitdir);
 
             // remove
             write("Removing settings ...");

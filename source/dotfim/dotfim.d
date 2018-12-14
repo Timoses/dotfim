@@ -23,7 +23,7 @@ class DotfileManager
     // Contains GitDots of actively managed dotfiles
     GitDot[] gitdots;
 
-    // paths or files relative to gitPath that should be excluded
+    // paths or files relative to gitdir that should be excluded
     static string[] excludedDots = [".git", "cheatSheets"];
 
     this(string dir, Options options = Options())
@@ -43,7 +43,7 @@ class DotfileManager
     {
         assert(this.settings.isInitialized);
 
-        this.git = new Git(this.settings.gitPath);
+        this.git = new Git(this.settings.gitdir);
         prepareGitBranch();
 
         string gitHash = this.git.hash;
@@ -63,7 +63,7 @@ class DotfileManager
                 import std.algorithm : canFind;
                 import std.range : array;
 
-                string relFilePath = gitFileName.asRelativePath(this.settings.gitPath).array;
+                string relFilePath = gitFileName.asRelativePath(this.settings.gitdir).array;
                 // ignore excluded files or folders
                 if (this.excludedDots.canFind(relFilePath))
                     continue;
@@ -75,7 +75,7 @@ class DotfileManager
                     try {
                         import std.path : buildPath;
 
-                        string dotFileName = buildPath(this.settings.dotPath, relFilePath);
+                        string dotFileName = buildPath(this.settings.dotdir, relFilePath);
 
                         // create dotfile's path if it doesn't exist yet
                         if (!dotFileName.dirName.exists)
@@ -107,7 +107,7 @@ class DotfileManager
         }
 
         // load all GitDots from gitFiles
-        processDirectory(this.settings.gitPath);
+        processDirectory(this.settings.gitdir);
 
         if (bManageAllGitFiles && filesToManage.length > 0)
         {
@@ -257,7 +257,7 @@ mixin template SettingsTemplate()
                     "Invalid settings file or folder: \"" ~ settingsFileOrDir ~ "\"");
         }
 
-        @property string gitPath() {
+        @property string gitdir() {
             import std.path : dirName;
             return this.settingsFile.dirName;
         }
@@ -265,18 +265,18 @@ mixin template SettingsTemplate()
         struct Internal
         {
             // The path where the dotfiles should be synchronized to
-            string dotPath;
+            string dotdir;
         }
         Internal internal;
 
-        @property string dotPath() { return this.internal.dotPath; }
-        @property void dotPath(string newEntry) {
-            this.internal.dotPath = newEntry; }
+        @property string dotdir() { return this.internal.dotdir; }
+        @property void dotdir(string newEntry) {
+            this.internal.dotdir = newEntry; }
 
         this(this)
         {
             assert(
-                    this.internal.dotPath != ""
+                    this.internal.dotdir != ""
                   );
             this._bInitialized = true;
         }
@@ -301,10 +301,10 @@ mixin template SettingsTemplate()
             auto json = parseJSON(readText(this.settingsFile));
 
             // The settings json must contain our entries
-            enforce("dotPath" in json,
+            enforce("dotdir" in json,
                     "Please run dotfim init");
 
-            this.dotPath = json["dotPath"].str;
+            this.dotdir = json["dotdir"].str;
 
             this._bInitialized = true;
         }

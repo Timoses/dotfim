@@ -92,7 +92,7 @@ struct Update
                         import std.conv : to;
                         string relGitPath = asRelativePath(
                                 gitdot.gitfile.file,
-                                settings.gitPath).to!string;
+                                settings.gitdir).to!string;
                         import std.string : splitLines;
                         import std.range : drop;
                         string[] oldGitLines =
@@ -135,7 +135,7 @@ struct Update
                     if (!askContinue("The following files have diverged:\n"
                             ~ divergees.map!((e) => asRelativePath(
                                     e.gitfile.file,
-                                    settings.gitPath).to!string)
+                                    settings.gitdir).to!string)
                                 .join("\n")
                             ~ "\nWould you like to attempt merging? (y/n): ", "y"))
                         // stop!
@@ -190,7 +190,7 @@ struct Update
                         foreach (div; divergees)
                         {
                             mergedFiles ~= asRelativePath(div.gitfile.file,
-                                            settings.gitPath).to!string
+                                            settings.gitdir).to!string
                                         ~ "\n";
                         }
                         // update commit message (ammend)
@@ -256,7 +256,7 @@ struct Update
                         import std.conv : to;
                         import std.path : asRelativePath;
                         changedFiles ~= asRelativePath(gitdot.gitfile.file,
-                                            settings.gitPath).to!string
+                                            settings.gitdir).to!string
                                         ~ "\n";
                     }
 
@@ -322,7 +322,7 @@ struct Update
                         if (dfUpdatees.canFind(gitdot))
                             writeln("\t" ~
                                 asRelativePath(gitdot.dotfile.file,
-                                    settings.dotPath).to!string);
+                                    settings.dotdir).to!string);
                     }
                 }
 

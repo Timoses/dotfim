@@ -34,13 +34,13 @@ class GitDot
     }
 
     // Accepts relFile which is the dotfile or gitfile relative to its
-    // dotPath or gitPath, respectively
-    static GitDot create(string relFile, string commentIndicator, string gitPath, string dotPath)
+    // dotdir or gitdir, respectively
+    static GitDot create(string relFile, string commentIndicator, string gitdir, string dotdir)
     {
         import std.path, std.file;
         import std.range : array;
 
-        // assert dotFile/dotPath begins with "."
+        // assert dotFile/dotdir begins with "."
         assert(relFile != "");
         import std.exception : enforce;
         enforce(relFile[0] == '.',
@@ -50,12 +50,12 @@ class GitDot
         string folder = relFile.dirName;
         if (folder != ".")
         {
-            string newGitPath = buildPath(gitPath, folder);
+            string newGitPath = buildPath(gitdir, folder);
             if (!exists(newGitPath))
                 mkdirRecurse(newGitPath);
         }
 
-        string gitFile = buildPath(gitPath, relFile);
+        string gitFile = buildPath(gitdir, relFile);
 
         import std.stdio : File;
         // if it exists prepend {commentIndicator} fileHeader
@@ -82,7 +82,7 @@ class GitDot
             newGit.close();
         }
 
-        string dotFile = buildPath(dotPath, relFile);
+        string dotFile = buildPath(dotdir, relFile);
 
         return new GitDot(gitFile, dotFile);
     }

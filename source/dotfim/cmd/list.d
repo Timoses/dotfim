@@ -23,7 +23,7 @@ struct List
         foreach(gitdot; this.dfm.gitdots)
         {
             writeln("\t" ~ asRelativePath(gitdot.gitfile.file,
-                        this.dfm.settings.gitPath).array);
+                        this.dfm.settings.gitdir).array);
         }
     }
 }

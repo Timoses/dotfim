@@ -89,7 +89,7 @@ struct Init
         DotfileManager.Settings settings;
         import std.process : environment;
         settings.settingsFile = this.gitdir;
-        settings.dotPath = this.dotdir.empty ?
+        settings.dotdir = this.dotdir.empty ?
                              askPath("Your home path", environment.get("HOME"))
                              : this.dotdir;
 
