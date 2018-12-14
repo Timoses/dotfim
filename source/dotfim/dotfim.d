@@ -221,6 +221,9 @@ mixin template OptionsTemplate()
             defaultGetoptPrinter("Usage: dotfim <Option> <Command> <Command Options>" ~ "\n"
                     , result.options);
 
+            import dotfim.cmd;
+            writeln(CmdHandler.help);
+
         }
     }
 }

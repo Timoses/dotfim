@@ -14,6 +14,23 @@ public import dotfim.cmd.unsync;
 
 class CmdHandler
 {
+    static string help()
+    {
+        static string help = q"EOS
+
+Commands:
+    init
+    add
+    remove
+    list
+    sync
+    test
+    unsync
+EOS";
+        return help;
+
+    }
+
     static DotfileManager CreateInstance(DotfileManager.Options options)
     {
         return new DotfileManager(getcwd(), options);
@@ -28,7 +45,10 @@ class CmdHandler
         int start = 1;
 
         if (args.length == 1)
-            Update(CreateInstance(options));
+        {
+            options.printHelp();
+            return;
+        }
         else
         {
             switch (args[1])
@@ -47,6 +67,9 @@ class CmdHandler
                     break;
                 case "init":
                     Init(args[start..$]);
+                    break;
+                case "sync":
+                    Update(CreateInstance(options));
                     break;
                 case "unsync":
                     Unsync(CreateInstance(options));
