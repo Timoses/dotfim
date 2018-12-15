@@ -15,6 +15,10 @@ version(unittest)
         setLogLevel(LogLevel.trace);
     }
 
+//.. todo:
+//    * dfm passes ALL gitfiles to GitDot, which itself keeps track of if it is managed or not
+//    * dfm keeps track of the git hash!! : It describes the state of dfm. After a Sync.updateGit -> it can track whether files have been removed or added, and then remove/add these GitDots and also trigger a reloading of the current GitDots!
+
 class DotfileManager
 {
     enum dotfimGitBranch = "dotfim";
@@ -60,74 +64,38 @@ class DotfileManager
     // managed header line
     void load()
     {
+        // TODO: reimplement this?
         // If synced first time ask if unmanaged files should be
         // turned to managed files
-        bool bManageAllGitFiles;
-        string[] filesToManage;
+        //bool bManageAllGitFiles;
+        //string[] filesToManage;
+
+
+        // TODO: when loaded and gitdots is not empty, use git knowledge
+        //  -> e.g. if hash changed(dfm has to store state as git hash)
+        //                        : check what files were changed
+        //    -> decide which files require reloading
+        //    -> or add/remove
 
         this.gitdots.length = 0;
 
-        void processDirectory(string dir, int depth = 0)
-        {
-            import std.file;
-
-
-            foreach (string gitFileName; dirEntries(dir, SpanMode.shallow))
-            {
-                import std.algorithm : canFind;
-                import std.range : array;
-
-                string relFilePath = gitFileName.asRelativePath(this.settings.gitdir).array;
-                // ignore excluded files or folders
-                if (this.excludedDots.canFind(relFilePath))
-                    continue;
-
-                if (gitFileName.isDir)
-                    processDirectory(gitFileName);
-                else
-                {
-                    try {
-                        import std.path : buildPath;
-
-                        string dotFileName = buildPath(this.settings.dotdir, relFilePath);
-
-                        // create dotfile's path if it doesn't exist yet
-                        if (!dotFileName.dirName.exists)
-                            mkdirRecurse(dotFileName.dirName);
-
-                        this.gitdots ~= new GitDot(gitFileName, dotFileName);
-                    }
-                    catch (NotManagedException e)
-                    {
-                        if (bManageAllGitFiles)
-                        {
-                            filesToManage ~= gitFileName;
-                        }
-                        else if (this.settings.isFirstSync
-                                 && askContinue(
-                                "DotfiM can start managing all existing files in your git repository now.\n You may as well add them individually later using the \"add\" command.\nManage all files now? (y/n): ", "y"))
-                        {
-                            filesToManage ~= gitFileName;
-                            bManageAllGitFiles = true;
-                        }
-                        else // stop asking ...
-                            this.settings.bFirstSync = false;
-                    }
-                    catch (Exception e) {
-                        stderr.writeln(relFilePath, " - Error: ", e.msg);
-                    }
-                }
-            }
-        }
-
-        // load all GitDots from gitFiles
-        processDirectory(this.settings.gitdir);
-
-        if (bManageAllGitFiles && filesToManage.length > 0)
-        {
-            import dotfim.cmd.add;
-            Add(this, filesToManage);
-        }
+        import std.algorithm : filter, any, startsWith, map;
+        import std.exception : ifThrown;
+        import std.file;
+        import std.path : buildPath;
+        import std.range : array;
+        this.gitdots = this.settings.gitdir.dirEntries(SpanMode.breadth)
+                        .filter!(file =>
+                            !excludedDots
+                                .any!(ex => file.asRelativePath(this.settings.gitdir)
+                                                .startsWith(ex)))
+                        .map!((gitfile) {
+                            string dotfile =
+                                    buildPath(this.settings.dotdir,
+                                        gitfile.asRelativePath(this.settings.gitdir)
+                                               .to!string);
+                            return new GitDot(gitfile, dotfile).ifThrown(null);
+                        }).filter!(e => e !is null).array;
     }
 
     void commitAndPush(string commitMsg)
