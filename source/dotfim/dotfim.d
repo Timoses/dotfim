@@ -44,9 +44,7 @@ class DotfileManager
         assert(this.settings.isInitialized);
 
         this.git = new Git(this.settings.gitdir);
-        prepareGitBranch();
-
-        string gitHash = this.git.hash;
+        this.git.setBranch(dotfimGitBranch);
 
         // If synced first time ask if unmanaged files should be
         // turned to managed files
@@ -113,43 +111,6 @@ class DotfileManager
         {
             import dotfim.cmd.add;
             Add(this, filesToManage);
-        }
-    }
-
-    void prepareGitBranch()
-    {
-        this.git.setBranch(dotfimGitBranch);
-
-        if (!this.options.bNoRemote)
-        {
-            writeln("... Fetching remote repository ...");
-            this.git.execute("fetch");
-        }
-
-        string local = this.git.hash;
-        string remote = this.git.remoteHash;
-
-        // remote branch exists and differs
-        if (remote.length > 0 && local != remote)
-        {
-            import std.algorithm : canFind;
-            // remote branch is ahead -> checkout remote
-            if (this.git.execute("branch", "-a", "--contains", local)
-                    .output.canFind("origin/" ~ this.dotfimGitBranch))
-            {
-                writeln("... Rebasing to remote repository ...");
-                this.git.execute("rebase", "origin/" ~ this.dotfimGitBranch);
-                writeln("Rebased to remote branch: ", remote[0..6]);
-            }
-
-            // else: local is ahead of remote?
-            if (!this.options.bNoRemote
-                    && this.git.execute("branch", "--contains", remote).output
-                        .canFind("* dotfim"))
-            {
-                writeln("... Pushing to remote repository ...");
-                this.git.push(this.dotfimGitBranch);
-            }
         }
     }
 

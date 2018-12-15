@@ -9,7 +9,44 @@ struct Sync
     {
         this.dfm = dfm;
 
+        updateGit();
         exec();
+    }
+
+    void updateGit()
+    {
+        import std.stdio : writeln;
+        if (!dfm.options.bNoRemote)
+        {
+            writeln("... Fetching remote repository ...");
+            dfm.git.execute("fetch");
+        }
+
+        string local = dfm.git.hash;
+        string remote = dfm.git.remoteHash;
+
+        // remote branch exists and differs
+        if (remote.length > 0 && local != remote)
+        {
+            import std.algorithm : canFind;
+            // remote branch is ahead -> checkout remote
+            if (dfm.git.execute("branch", "-a", "--contains", local)
+                    .output.canFind("origin/" ~ dfm.dotfimGitBranch))
+            {
+                writeln("... Rebasing to remote repository ...");
+                dfm.git.execute("rebase", "origin/" ~ dfm.dotfimGitBranch);
+                writeln("Rebased to remote branch: ", remote[0..6]);
+            }
+
+            // else: local is ahead of remote?
+            if (!dfm.options.bNoRemote
+                    && dfm.git.execute("branch", "--contains", remote).output
+                        .canFind("* dotfim"))
+            {
+                writeln("... Pushing to remote repository ...");
+                dfm.git.push(dfm.dotfimGitBranch);
+            }
+        }
     }
 
     /**
