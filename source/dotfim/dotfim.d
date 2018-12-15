@@ -175,18 +175,34 @@ class DotfileManager
         }
     }
 
+    // Finds GitDot based on either a relative file path to git/dot dir or an
+    // absolute file path
     GitDot findGitDot(string file)
     {
-        import std.path : asAbsolutePath;
-        import std.range : array;
+        import std.algorithm : any, startsWith;
+        import std.conv : to;
+        import std.path : asAbsolutePath, isAbsolute, buildPath, asNormalizedPath;
 
-        file = asNormalizedPath(asAbsolutePath(file).array).array;
+        string finddot;
+        string findgit;
 
-        import std.algorithm : canFind;
+        file = file.asNormalizedPath.to!string;
+        if (file.isAbsolute && ![this.settings.dotdir, this.settings.gitdir]
+                .any!((dir) => file.startsWith(dir)))
+            return null;
+        else
+        {
+            finddot = buildPath(this.settings.dotdir, file);
+            findgit = buildPath(this.settings.gitdir, file);
+        }
+
         foreach (ref gitdot; this.gitdots)
         {
-            if (gitdot.dotfile.file == file
-                || gitdot.gitfile.file == file)
+            if (finddot.length > 0 && gitdot.dotfile.file == finddot)
+                return gitdot;
+            else if (findgit.length > 0 && gitdot.gitfile.file == findgit)
+                return gitdot;
+            else if (gitdot.dotfile.file == file || gitdot.gitfile.file == file)
                 return gitdot;
         }
 
