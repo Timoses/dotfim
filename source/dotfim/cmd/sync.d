@@ -438,3 +438,39 @@ unittest
     assert(gitdot.dotfile.gitLines == gitdot.gitfile.gitLines);
     assert(gitdot.dotfile.gitHash == dfm.git.hash);
 }
+
+// Test if a line is synced correctly between two mashines
+unittest
+{
+    import std.algorithm : each;
+    import std.conv : to;
+    import std.file : tempDir, rmdirRecurse, exists;
+    import std.path : buildPath, asRelativePath;
+    import std.stdio;
+    import dotfim.cmd : Test, Init, Sync;
+
+    enum string testline = "This is a test line to be synced";
+
+    string testdir1 = buildPath(tempDir(), "dotfim", "unittest-sync", "env1");
+    string testdir2 = buildPath(tempDir(), "dotfim", "unittest-sync", "env2");
+    [testdir1, testdir2].each!((dir) => dir.exists ? dir.rmdirRecurse : {});
+    auto testenv1 = Test(testdir1);
+    auto testenv2 = Test(testdir2);
+    string repodir = testenv1.repodir;
+
+    auto dfm1 = Init(testenv1).exec();
+    auto init2 = Init(testenv2);
+    init2.repodir = testenv1.repodir;
+    auto dfm2 = init2.exec();
+
+    Sync(dfm1);
+    Sync(dfm2);
+
+    auto dot1 = dfm1.gitdots[0].dotfile;
+    dot1.gitLines = dot1.gitLines ~ testline;
+    dot1.write;
+    Sync(dfm1);
+    Sync(dfm2);
+    auto gitdot2 = dfm2.findGitDot(asRelativePath(dot1.file, dfm1.settings.dotdir).to!string);
+    assert(gitdot2.dotfile.gitLines[$-1] == testline);
+}
