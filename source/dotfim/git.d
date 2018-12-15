@@ -11,9 +11,6 @@ class Git
     // operating directory
     string dir;
 
-    // saved branch, can be returned to by calling resetBranch()
-    string savedBranch;
-
     this(string gitDir)
     {
         import std.path : buildPath;
@@ -68,16 +65,11 @@ class Git
         return url;
     }
 
-    void saveBranch()
+    string branch()
     {
         import std.string : chomp;
-        this.savedBranch = chomp(
+        return chomp(
                 execute("rev-parse", "--abbrev-ref", "HEAD").output);
-    }
-
-    void resetBranch()
-    {
-        execute("checkout", this.savedBranch);
     }
 
     // checks out branchName, creates it if it doesn't exist
@@ -113,13 +105,14 @@ class Git
 
     @property string remoteHash(string branchName = "")
     {
-        if (branchName == "")
-            branchName = execute("symbolic-ref", "--quiet", "--short", "HEAD").output;
-        enforce(branchName != "", "Unable to determine branch for remote hash.");
         import std.string : chomp;
-        auto res = execute!(ErrorMode.Ignore)("rev-parse", "origin/dotfim");
+        if (branchName == "")
+            branchName = execute("symbolic-ref", "--quiet", "--short", "HEAD")
+                            .output.chomp;
+        enforce(branchName != "", "Unable to determine branch for remote hash.");
+        auto res = execute!(ErrorMode.Ignore)("rev-parse", "origin/" ~ branchName);
 
-        // remote branch origin/dotfim does not exist?
+        // remote branch origin/<branchName> does not exist?
         if (res.status > 0)
             return "";
         else

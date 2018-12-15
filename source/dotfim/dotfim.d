@@ -118,7 +118,6 @@ class DotfileManager
 
     void prepareGitBranch()
     {
-        this.git.saveBranch();
         this.git.setBranch(dotfimGitBranch);
 
         if (!this.options.bNoRemote)
@@ -135,19 +134,18 @@ class DotfileManager
         {
             import std.algorithm : canFind;
             // remote branch is ahead -> checkout remote
-            if (this.git.execute("branch", "-a", "--contains", this.dotfimGitBranch).output.canFind("origin/" ~ this.dotfimGitBranch))
+            if (this.git.execute("branch", "-a", "--contains", local)
+                    .output.canFind("origin/" ~ this.dotfimGitBranch))
             {
-                writeln("... Checking out remote repository ...");
-                this.git.execute("checkout", "-B", this.dotfimGitBranch,
-                        "origin/" ~ this.dotfimGitBranch);
-                writeln("Checked out remote branch: ", remote[0..6]);
+                writeln("... Rebasing to remote repository ...");
+                this.git.execute("rebase", "origin/" ~ this.dotfimGitBranch);
+                writeln("Rebased to remote branch: ", remote[0..6]);
             }
 
             // else: local is ahead of remote?
             if (!this.options.bNoRemote
-                    && this.git.execute("branch", "--contains",
-                        "origin/" ~ this.dotfimGitBranch).output
-                    .canFind("* dotfim"))
+                    && this.git.execute("branch", "--contains", remote).output
+                        .canFind("* dotfim"))
             {
                 writeln("... Pushing to remote repository ...");
                 this.git.push(this.dotfimGitBranch);
@@ -165,7 +163,7 @@ class DotfileManager
     {
         if (!this.options.bNoRemote)
         {
-            writeln("... Reaching out to git repository ...");
+            writeln("... Pushing to git repository ...");
             try
             {
                 this.git.push(dotfimGitBranch);
