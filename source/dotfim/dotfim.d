@@ -53,10 +53,19 @@ class DotfileManager
         this.git = new Git(this.settings.gitdir);
         this.git.setBranch(dotfimGitBranch);
 
+        load();
+    }
+
+    // Loads managed GitDot pairs by scanning files in gitdir for the
+    // managed header line
+    void load()
+    {
         // If synced first time ask if unmanaged files should be
         // turned to managed files
         bool bManageAllGitFiles;
         string[] filesToManage;
+
+        this.gitdots.length = 0;
 
         void processDirectory(string dir, int depth = 0)
         {

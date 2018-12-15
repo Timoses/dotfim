@@ -43,6 +43,7 @@ struct Sync
                 writeln("... Rebasing to remote repository ...");
                 dfm.git.execute("rebase", "origin/" ~ dfm.dotfimGitBranch);
                 writeln("Rebased to remote branch: ", remote[0..6]);
+                dfm.load();
             }
 
             // else: local is ahead of remote?
