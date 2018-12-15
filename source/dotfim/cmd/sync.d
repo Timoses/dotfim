@@ -1,5 +1,8 @@
 module dotfim.cmd.sync;
 
+debug
+    import vibe.core.log;
+
 import dotfim.dotfim;
 
 struct Sync
@@ -15,6 +18,8 @@ struct Sync
 
     void updateGit()
     {
+        debug logDebug("Sync:updateGit");
+
         import std.stdio : writeln;
         if (!dfm.options.bNoRemote)
         {
@@ -86,6 +91,7 @@ struct Sync
      */
     private void exec()
     {
+        debug logDebug("Sync:exec");
         with(this.dfm)
         {
             string curGitHash = git.hash;
@@ -159,6 +165,15 @@ struct Sync
                         }
                     }
                 }
+            }
+
+            debug {
+                import std.algorithm : map;
+                logDebugV("Sync.1-CollectFiles | dfUpdatees: %s, "
+                            ~ " | gfUpdatees: %s | divergees: %s"
+                            , dfUpdatees.map!((d) => d.dotfile.file)
+                            , gfUpdatees.map!((g) => g.gitfile.file)
+                            , divergees.map!((d) => d.dotfile.file));
             }
 
             // 2: Merge

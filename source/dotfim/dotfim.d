@@ -8,6 +8,13 @@ import dotfim.git;
 import dotfim.gitdot;
 import dotfim.util;
 
+version(unittest)
+    shared static this()
+    {
+        import vibe.core.log;
+        setLogLevel(LogLevel.trace);
+    }
+
 class DotfileManager
 {
     enum dotfimGitBranch = "dotfim";

@@ -8,6 +8,7 @@
 	"license": "MIT",
 
     "dependencies": {
-        "vibe-d:data": "~>0.8.4"
+        "vibe-d:data": "~>0.8.4",
+        "vibe-core": "~>1.4.5"
     }
 }
