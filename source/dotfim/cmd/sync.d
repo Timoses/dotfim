@@ -24,14 +24,16 @@ struct Sync
 
         string local = dfm.git.hash;
         string remote = dfm.git.remoteHash;
+        writeln("local: ", local);
+        writeln("remote: ", remote);
 
         // remote branch exists and differs
         if (remote.length > 0 && local != remote)
         {
             import std.algorithm : canFind;
             // remote branch is ahead -> checkout remote
-            if (dfm.git.execute("branch", "-a", "--contains", local)
-                    .output.canFind("origin/" ~ dfm.dotfimGitBranch))
+            if (!dfm.git.execute("branch", "-a", "--contains", remote)
+                    .output.canFind("* dotfim"))
             {
                 writeln("... Rebasing to remote repository ...");
                 dfm.git.execute("rebase", "origin/" ~ dfm.dotfimGitBranch);
@@ -40,8 +42,8 @@ struct Sync
 
             // else: local is ahead of remote?
             if (!dfm.options.bNoRemote
-                    && dfm.git.execute("branch", "--contains", remote).output
-                        .canFind("* dotfim"))
+                    && !dfm.git.execute("branch", "--contains", local).output
+                        .canFind("origin/dotfim"))
             {
                 writeln("... Pushing to remote repository ...");
                 dfm.git.push(dfm.dotfimGitBranch);
