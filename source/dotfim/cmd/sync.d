@@ -117,7 +117,7 @@ struct Sync
             // 1: Collect files that need update
             foreach (gitdot; gitdots)
             {
-                if (!gitdot.dotfile.managed)
+                if (!gitdot.dot.managed)
                 {
                     import std.algorithm : uniq;
                     import std.array;
@@ -125,7 +125,7 @@ struct Sync
                 }
                 else
                 {
-                    string dotGitHash = gitdot.dotfile.gitHash;
+                    string dotGitHash = gitdot.dot.gitHash;
                     import std.exception : enforce;
                     enforce(dotGitHash != "", "dotfile's Git Section commit hash can not be empty");
                     if (dotGitHash != curGitHash)
@@ -137,7 +137,7 @@ struct Sync
                         import std.path : asRelativePath;
                         import std.conv : to;
                         string relGitPath = asRelativePath(
-                                gitdot.gitfile.file,
+                                gitdot.git.file,
                                 settings.gitdir).to!string;
                         import std.string : splitLines;
                         import std.range : drop;
@@ -148,7 +148,7 @@ struct Sync
                                 .drop(1); // drop header line
 
                         // and check for custom updates
-                        if (oldGitLines != gitdot.dotfile.gitLines)
+                        if (oldGitLines != gitdot.dot.gitLines)
                         {
                             import std.algorithm : uniq;
                             import std.array;
@@ -158,7 +158,7 @@ struct Sync
                     else // same git hash
                     {
                         // updates/changes in dotfile?
-                        if (gitdot.dotfile.gitLines != gitdot.gitfile.gitLines)
+                        if (gitdot.dot.gitLines != gitdot.git.gitLines)
                         {
                             import std.algorithm : uniq;
                             import std.array;
@@ -172,9 +172,9 @@ struct Sync
                 import std.algorithm : map;
                 logDebugV("Sync.1-CollectFiles | dfUpdatees: %s, "
                             ~ " | gfUpdatees: %s | divergees: %s"
-                            , dfUpdatees.map!((d) => d.dotfile.file)
-                            , gfUpdatees.map!((g) => g.gitfile.file)
-                            , divergees.map!((d) => d.dotfile.file));
+                            , dfUpdatees.map!((d) => d.dot.file)
+                            , gfUpdatees.map!((g) => g.git.file)
+                            , divergees.map!((d) => d.dot.file));
             }
 
             // 2: Merge
@@ -189,7 +189,7 @@ struct Sync
                     import std.path : asRelativePath;
                     if (!askContinue("The following files have diverged:\n"
                             ~ divergees.map!((e) => asRelativePath(
-                                    e.gitfile.file,
+                                    e.git.file,
                                     settings.gitdir).to!string)
                                 .join("\n")
                             ~ "\nWould you like to attempt merging? (y/n): ", "y"))
@@ -200,11 +200,11 @@ struct Sync
                     // TODO: support multiple different dotfile hashes
                     //       (however that might happen) -> multiple merge
                     //       branches and merge commits
-                    string commonBaseHash = divergees[0].dotfile.gitHash;
+                    string commonBaseHash = divergees[0].dot.gitHash;
                     foreach (gitdot; divergees)
                     {
                         import std.exception : enforce;
-                        enforce(gitdot.dotfile.gitHash == commonBaseHash,
+                        enforce(gitdot.dot.gitHash == commonBaseHash,
                                 "Found differing git hashes in divergent "
                                 ~ "dotfiles. Currently only one merge base "
                                 ~ "base is supported! Aborting Merge.");
@@ -224,9 +224,9 @@ struct Sync
                     // write dotfiles updates to gitfiles
                     foreach (gitdot; divergees)
                     {
-                        gitdot.gitfile.gitLines = gitdot.dotfile.gitLines;
-                        gitdot.gitfile.write();
-                        git.execute("add", gitdot.gitfile.file);
+                        gitdot.git.gitLines = gitdot.dot.gitLines;
+                        gitdot.git.write();
+                        git.execute("add", gitdot.git.file);
                     }
                     // commit these changes
                     git.execute(["commit", "-m", "Diverged commit"]);
@@ -244,7 +244,7 @@ struct Sync
                         string mergedFiles;
                         foreach (div; divergees)
                         {
-                            mergedFiles ~= asRelativePath(div.gitfile.file,
+                            mergedFiles ~= asRelativePath(div.git.file,
                                             settings.gitdir).to!string
                                         ~ "\n";
                         }
@@ -256,7 +256,7 @@ struct Sync
 
                         // read merged contents from gitfiles
                         foreach (gitdot; divergees)
-                            gitdot.gitfile.read();
+                            gitdot.git.read();
                     }
                     else
                     {
@@ -288,7 +288,7 @@ struct Sync
 
                         // read new gitfile contents
                         foreach (gitdot; gitdots)
-                            gitdot.gitfile.read();
+                            gitdot.git.read();
                     }
                     else
                     {
@@ -305,12 +305,12 @@ struct Sync
                 {
                     foreach (gitdot; gfUpdatees)
                     {
-                        gitdot.gitfile.gitLines = gitdot.dotfile.gitLines;
-                        gitdot.gitfile.write();
-                        git.execute("add", gitdot.gitfile.file);
+                        gitdot.git.gitLines = gitdot.dot.gitLines;
+                        gitdot.git.write();
+                        git.execute("add", gitdot.git.file);
                         import std.conv : to;
                         import std.path : asRelativePath;
-                        changedFiles ~= asRelativePath(gitdot.gitfile.file,
+                        changedFiles ~= asRelativePath(gitdot.git.file,
                                             settings.gitdir).to!string
                                         ~ "\n";
                     }
@@ -366,9 +366,9 @@ struct Sync
 
                     foreach (gitdot; dfs)
                     {
-                        gitdot.dotfile.gitLines = gitdot.gitfile.gitLines;
-                        gitdot.dotfile.gitHash = curGitHash;
-                        gitdot.dotfile.write();
+                        gitdot.dot.gitLines = gitdot.git.gitLines;
+                        gitdot.dot.gitHash = curGitHash;
+                        gitdot.dot.write();
 
                         import std.algorithm : canFind;
                         import std.conv : to;
@@ -376,7 +376,7 @@ struct Sync
                         // tell user if a dotfile's contents actually changed
                         if (dfUpdatees.canFind(gitdot))
                             writeln("\t" ~
-                                asRelativePath(gitdot.dotfile.file,
+                                asRelativePath(gitdot.dot.file,
                                     settings.dotdir).to!string);
                     }
                 }
@@ -425,7 +425,7 @@ unittest
 
         // write entry
         enum string testentry = "This is a test entry to be synced.";
-        auto dfile = gitdot.dotfile;
+        auto dfile = gitdot.dot;
         dfile.gitLines = dfile.gitLines ~ testentry;
         dfile.write;
         Sync(dfm);
@@ -435,8 +435,8 @@ unittest
     assert(dfm.gitdots.length == 3);
     auto gitdot = dfm.findGitDot(testfile);
     assert(gitdot);
-    assert(gitdot.dotfile.gitLines == gitdot.gitfile.gitLines);
-    assert(gitdot.dotfile.gitHash == dfm.git.hash);
+    assert(gitdot.dot.gitLines == gitdot.git.gitLines);
+    assert(gitdot.dot.gitHash == dfm.git.hash);
 }
 
 // Test if a line is synced correctly between two mashines
@@ -466,11 +466,11 @@ unittest
     Sync(dfm1);
     Sync(dfm2);
 
-    auto dot1 = dfm1.gitdots[0].dotfile;
+    auto dot1 = dfm1.gitdots[0].dot;
     dot1.gitLines = dot1.gitLines ~ testline;
     dot1.write;
     Sync(dfm1);
     Sync(dfm2);
     auto gitdot2 = dfm2.findGitDot(asRelativePath(dot1.file, dfm1.settings.dotdir).to!string);
-    assert(gitdot2.dotfile.gitLines[$-1] == testline);
+    assert(gitdot2.dot.gitLines[$-1] == testline);
 }

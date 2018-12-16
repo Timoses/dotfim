@@ -119,14 +119,14 @@ struct Add
 
             foreach (gitdot; createdGitDots)
             {
-                git.execute("add", gitdot.gitfile.file);
-                addedFiles ~= asRelativePath(gitdot.gitfile.file,
+                git.execute("add", gitdot.git.file);
+                addedFiles ~= asRelativePath(gitdot.git.file,
                         settings.gitdir).array ~ "\n";
             }
 
             import std.algorithm : uniq;
             import std.range : array;
-            gitdots = uniq!((e1,e2) => e1.dotfile.file == e2.dotfile.file)(createdGitDots ~ gitdots).array;
+            gitdots = uniq!((e1,e2) => e1.dot.file == e2.dot.file)(createdGitDots ~ gitdots).array;
 
             commitAndPush("DotfiM Add: \n\n" ~ addedFiles);
 

@@ -29,7 +29,7 @@ struct Unsync
             foreach(gitdot; dfm.gitdots)
             {
                 import std.range : array;
-                files ~= gitdot.gitfile.file;
+                files ~= gitdot.git.file;
             }
 
             // unmanage all files

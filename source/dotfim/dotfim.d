@@ -143,11 +143,11 @@ class DotfileManager
 
         foreach (ref gitdot; this.gitdots)
         {
-            if (finddot.length > 0 && gitdot.dotfile.file == finddot)
+            if (finddot.length > 0 && gitdot.dot.file == finddot)
                 return gitdot;
-            else if (findgit.length > 0 && gitdot.gitfile.file == findgit)
+            else if (findgit.length > 0 && gitdot.git.file == findgit)
                 return gitdot;
-            else if (gitdot.dotfile.file == file || gitdot.gitfile.file == file)
+            else if (gitdot.dot.file == file || gitdot.git.file == file)
                 return gitdot;
         }
 

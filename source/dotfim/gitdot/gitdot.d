@@ -8,8 +8,8 @@ class NotManagedException : Exception
 
 class GitDot
 {
-    Gitfile gitfile;
-    Dotfile dotfile;
+    Gitfile git;
+    Dotfile dot;
 
     // Both dotfile and gitfile have to contain the following
     // as the first line:
@@ -19,17 +19,17 @@ class GitDot
 
     this(string gfilePath, string dfilePath)
     {
-        this.gitfile =
+        this.git =
             new Gitfile(gfilePath);
 
         import std.string : empty;
-        this.commentIndicator = gitfile.retrieveCommentIndicator(fileHeader);
+        this.commentIndicator = git.retrieveCommentIndicator(fileHeader);
 
         // throw if gitFile is missing the {commentIndicator} fileHeader
         if (this.commentIndicator.empty)
             throw new NotManagedException();
 
-        this.dotfile =
+        this.dot =
             new Dotfile(dfilePath, this.commentIndicator, createHeaderLine());
     }
 

@@ -54,16 +54,16 @@ struct Remove
             }
 
             // remove header from gitFile
-            found.gitfile.write(true);
+            found.git.write(true);
 
-            git.execute("add", found.gitfile.file);
+            git.execute("add", found.git.file);
 
             import std.range : array;
-            unmanagedFiles ~= asRelativePath(found.gitfile.file,
+            unmanagedFiles ~= asRelativePath(found.git.file,
                         settings.gitdir).array ~ "\n";
 
             // write only local section to dotfile
-            with (found.dotfile)
+            with (found.dot)
                 write(localLines);
 
             import std.algorithm.mutation : remove;

@@ -22,7 +22,7 @@ struct List
         writeln("Managed files:");
         foreach(gitdot; this.dfm.gitdots)
         {
-            writeln("\t" ~ asRelativePath(gitdot.gitfile.file,
+            writeln("\t" ~ asRelativePath(gitdot.git.file,
                         this.dfm.settings.gitdir).array);
         }
     }
