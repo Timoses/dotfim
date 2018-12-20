@@ -150,7 +150,7 @@ struct Options
     }
 }
 
-unittest
+version(unittest_all) unittest
 {
     import std.file : rmdirRecurse, exists;
     string tmp = buildPath(tempDir(), "dotfim", "unittest-test");

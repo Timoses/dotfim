@@ -239,7 +239,7 @@ class PassageHandler
     }
 }
 
-unittest
+version(unittest_all) unittest
 {
     GitDot.Settings settings;
 

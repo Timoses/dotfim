@@ -7,3 +7,12 @@ license "MIT"
 dependency "vibe-d:data" version="~>0.8.4"
 dependency "vibe-core" version="~>1.4.5"
 
+configuration "application" {
+    targetType "executable"
+}
+
+configuration "unittest" {
+    postBuildCommands "./unittest.d ./tests"
+    versions "unittest_all"
+}
+

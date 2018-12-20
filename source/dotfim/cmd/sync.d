@@ -452,7 +452,7 @@ struct Sync
     }
 }
 
-unittest
+version(unittest_all) unittest
 {
     import std.file : tempDir, exists, rmdirRecurse;
     import std.path : buildPath;
@@ -500,7 +500,7 @@ unittest
 }
 
 // Test if a line is synced correctly between two mashines
-unittest
+version(unittest_all) unittest
 {
     import std.algorithm : each;
     import std.conv : to;

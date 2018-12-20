@@ -212,7 +212,7 @@ class GitDot
             return true;
         }
     }
-    unittest
+    version(unittest_all) unittest
     {
         auto gitdot = new GitDot("","");
         gitdot.commentIndicator = "#";
