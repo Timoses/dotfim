@@ -13,6 +13,13 @@ else
 {
     void main(string[] args)
     {
-        CmdHandler.executeCLI(args);
+        try CmdHandler.executeCLI(args);
+        catch (Exception e)
+        {
+            import std.stdio;
+            stderr.writeln(e.msg);
+            debug throw e;
+        }
+
     }
 }
