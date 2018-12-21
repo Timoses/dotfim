@@ -460,7 +460,7 @@ unittest
     import dotfim.cmd : Add, Init, Test;
     import dotfim.gitdot.passage;
 
-    string testpath = buildPath(tempDir(), "dotfim", "unittest-add");
+    string testpath = buildPath(tempDir(), "dotfim", "unittest-sync-add");
     if (testpath.exists) testpath.rmdirRecurse;
     string oldGitHash;
     auto testenv = Test(testpath);

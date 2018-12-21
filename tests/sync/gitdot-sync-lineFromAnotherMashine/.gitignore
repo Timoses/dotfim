@@ -1,0 +1,14 @@
+.dub
+docs.json
+__dummy.html
+docs/
+diverged.so
+diverged.dylib
+diverged.dll
+diverged.a
+diverged.lib
+diverged-test-*
+*.exe
+*.o
+*.obj
+*.lst

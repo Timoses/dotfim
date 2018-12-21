@@ -1,0 +1,13 @@
+{
+	"name": "diverged-branch",
+	"authors": [
+		"Timo"
+	],
+	"description": "A minimal D application.",
+	"copyright": "Copyright © 2018, Timo",
+	"license": "proprietary",
+
+    "dependencies": {
+        "dotfim": {"path": "../../../"}
+    }
+}
