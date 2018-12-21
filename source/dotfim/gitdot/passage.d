@@ -14,7 +14,8 @@ struct Passage
     {
         Invalid,
         Git,
-        Local
+        Local,
+        Private
     }
 
     Type type;
@@ -25,7 +26,8 @@ struct Passage
 
     invariant
     {
-        assert(type != Passage.Type.Local || localinfo.length,
+        assert((type != Passage.Type.Local && type != Passage.Type.Private)
+                    || localinfo.length,
                 "Local passage must have localinfo specified");
     }
 
@@ -94,7 +96,8 @@ class PassageHandler
         if (!managed)
         {
             static if (is (T == Dotfile))
-                return [Passage(Passage.Type.Local, lines, this.settings.localinfo)];
+                return [Passage(Passage.Type.Private, lines,
+                                this.settings.localinfo)];
             else if (is (T == Gitfile))
                 return [Passage(Passage.Type.Git, lines)];
         }
@@ -142,8 +145,12 @@ class PassageHandler
                         bool hasLocalStatement = false;
                         static if (is (T == Gitfile))
                         {
-                            if (type == Passage.Type.Local)
+                            if (type == Passage.Type.Local
+                                   || type == Passage.Type.Private)
                             {
+                                assert(statements.length > 1,
+                                        "Required localinfo is missing "
+                                        ~"for type " ~ type.to!string);
                                 localinfo = statements[1];
                                 hasLocalStatement = true;
                             }
@@ -158,8 +165,9 @@ class PassageHandler
                         {
                             inPassage = true;
                             passages ~= Passage(type, [],
-                                    type == Passage.Type.Local ? localinfo
-                                                               : "");
+                                                (type == Passage.Type.Local ||
+                                                 type == Passage.Type.Private)
+                                                ? localinfo : "");
                         }
                         continue;
                     }
@@ -196,8 +204,10 @@ class PassageHandler
         import std.conv : to;
         import std.format : format;
 
+        auto control = "%s %s ".format(this.commentIndicator,
+                              this.controlStatement);
 
-        switch (passage.type) with (Passage.Type)
+        final switch (passage.type) with (Passage.Type)
         {
             case Git:
                 static if (is (T == Dotfile))
@@ -214,9 +224,8 @@ class PassageHandler
                     if (!managed)
                         return passage.lines.dup;
 
-                auto control = "%s %s %s".format(this.commentIndicator,
-                                      this.controlStatement,
-                                      Local.to!string);
+                control ~= Local.to!string;
+
                 static if (is (T == Gitfile))
                     control ~= " " ~ passage.localinfo;
 
@@ -231,11 +240,53 @@ class PassageHandler
                                 ~ this.controlStatement ~ " "
                                 ~ this.blockEndIndicator;
                 return lines;
-            default:
+            case Private:
+                control ~= Private.to!string;
+
+                static if (is (T == Gitfile))
+                {
+                    import std.algorithm : all, count;
+                    import std.ascii : isHexDigit;
+                    import std.conv : parse;
+                    assert(passage.lines.length == 1
+                            && passage.lines[0].dup.all!isHexDigit
+                            && passage.lines[0].count == 32*2,
+                            "A private passage in Gitfile should only always "
+                            ~ "contain a one-line SHA256 hash!");
+
+                    control ~= " " ~ this.settings.localinfo;
+
+                    return [control] ~ passage.lines;
+                }
+                else
+                {
+                    if (passage.lines.length > 1)
+                        control ~= " " ~ this.blockBeginIndicator;
+
+                    string[] lines;
+                    lines ~= [control] ~ passage.lines;
+
+                    if (passage.lines.length > 1)
+                        lines ~= this.commentIndicator ~ " "
+                                ~ this.controlStatement ~ " "
+                                ~ this.blockEndIndicator;
+
+                    return lines;
+                }
+            case Invalid:
                 assert(false);
 
         }
+    }
 
+    Passage hash(Passage passage) const
+    {
+        import std.digest.sha :sha256Of;
+        import std.array : join;
+        import std.format : format;
+        ubyte[32] hash = sha256Of(passage.lines.join);
+        return Passage(passage.type, ["%(%02x%)".format(hash)],
+                                passage.localinfo);
     }
 }
 

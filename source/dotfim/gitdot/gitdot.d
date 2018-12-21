@@ -78,34 +78,41 @@ class GitDot
         }
     }
 
-    // returns true if something was synced, false otherwise
+    // Synchronizes from Git/Dot to Dot/Git (cross-relationship).
+    // Always disregards content of the target and overwrites it with the other
+    // (private passages only exist hashed in gitfile!).
+    // Returns true if something was synced, false otherwise
     bool syncTo(T)()
         if (is (T : GitDotFile))
     {
         debug logDebug("GitDot.syncTo!"~T.stringof);
+
+        import std.algorithm : map, each, all, filter, canFind;
+        import std.conv : to;
+        import std.typecons;
+        import std.range : front, popFront, popFrontN;
 
         static if (is (T == Gitfile))
         {
             // sync local files to gitfile
             if (!dot.managed)
             {
-                import std.algorithm : any;
-                // check if the same local dotfile passage from unmanaged file
-                // was already synced from somewhere...
-                if (!git.passages!(Passage.Type.Local)
-                        .any!(passage =>
-                            passage == Passage(Passage.Type.Local,
-                                               dot.raw,
-                                               this.settings.localinfo)))
-                {
-                    git.passages ~= Passage(Passage.Type.Local, dot.raw,
-                            this.settings.localinfo);
-                    return true;
-                }
-                else
+                // unmanaged content is private!
+                assert(dot.passages.length == 1 &&
+                        dot.passages[0].type == Passage.Type.Private,
+                        "Unmanaged dotfile should only have one private passage "
+                        ~ "containing all its content");
+
+                // Does the private passage already exist?
+                if (git.passages.canFind!(passage => passage ==
+                                GitDotFile.passageHandler.hash(dot.passages[0])))
                     return false;
+
+                git.passages ~= [GitDotFile.passageHandler.hash(dot.passages[0])];
+
+                return true;
             }
-            else
+            else with(Passage.Type)
             {
                 debug logTrace("GitDot.syncTo: dot.managed");
 
@@ -129,15 +136,12 @@ class GitDot
                    Storing redundant information in the matrix supports better
                    debugging.
                 */
-                import std.algorithm : map, each, all, filter;
-                import std.conv : to;
-                import std.typecons;
-                import std.range : front, popFront;
                 auto gits = git.passages;
                 Nullable!Passage[][] matrix;
-                foreach (dotp; dot.passages) with(Passage.Type)
+                foreach (dotp; dot.passages)
                 {
-                    while (gits.length && gits.front.type == Local
+                    while (gits.length &&
+                            (gits.front.type == Local || gits.front.type == Private)
                             && this.settings.localinfo != gits.front.localinfo)
                     {
                         matrix ~= [Nullable!Passage(), Nullable!Passage(),
@@ -150,7 +154,10 @@ class GitDot
                         auto gitp = gits.front;
                         gits.popFront;
 
-                        if (dotp == gitp)
+                        if ((gitp.type == Private &&
+                                this.git.passageHandler.hash(dotp) == gitp))
+                            matrix ~= [dotp.nullable, gitp.nullable];
+                        else if (gitp == dotp)
                             matrix ~= [dotp.nullable, gitp.nullable];
                         else
                             matrix ~= [[dotp.nullable, Nullable!Passage()],
@@ -160,9 +167,9 @@ class GitDot
                         matrix ~= [dotp.nullable];
                 }
                 // deal with remaining passages in gits
-                foreach (gitp; gits) with (Passage.Type)
+                foreach (gitp; gits)
                 {
-                    if (gitp.type == Local
+                    if ((gitp.type == Local || gitp.type == Private)
                             && this.settings.localinfo != gitp.localinfo)
                         matrix ~= [Nullable!Passage(), Nullable!Passage(),
                                     gitp.nullable];
@@ -179,10 +186,15 @@ class GitDot
                     if (row.length == 3)
                     {
                         assert(row[0..2].all!(n => n == Nullable!Passage()));
-                        assert(row[2].type == Passage.Type.Local);
+                        assert(row[2].type == Passage.Type.Local ||
+                               row[2].type == Passage.Type.Private);
                         return row[2];
                     }
-                    return row[0];
+
+                    if (!row[0].isNull && row[0].type == Private)
+                        return GitDotFile.passageHandler.hash(row[0]).nullable;
+                    else
+                        return row[0];
                 }).filter!(n => !n.isNull).map!(n => n.get).array;
 
                 git.passages = passages;
@@ -192,17 +204,82 @@ class GitDot
             return true;
         }
 
-        static if (is (T == Dotfile))
+        static if (is (T == Dotfile)) with (Passage.Type)
         {
-            this.dot.passages.length = 0;
+            auto dots = this.dot.passages;
+            // only use local/private sections pertaining to this mashine
+            auto gits = this.git.passages.filter!(passage
+                                => (passage.type != Private && passage.type != Local)
+                                    || passage.localinfo == this.settings.localinfo);
 
-            foreach (passage; this.git.passages)
+            Nullable!Passage[][] matrix;
+            /* Recursively search for matching dotp passage. If none found,
+               add [gitp,null]. If found, add [null, dotp_x] where dotp_x all
+               dotp passed before hitting the match, and also add matched [gitp, dotp].
+               If gitp is private: add [dotp, dotp].
+               Adding a private passage from gitfile or removing a private passage
+               from dotfile (missing private passage in gitfile) is not allowed! */
+   gitloop: foreach (gitp; gits)
             {
-                if (passage.type == Passage.Type.Git
-                        || (passage.type == Passage.Type.Local
-                        && passage.localinfo == this.settings.localinfo))
-                    this.dot.passages ~= Passage(passage);
+                assert((gitp.type != Local && gitp.type != Private) ||
+                        (gitp.localinfo == this.git.settings.localinfo),
+                        "Other mashine git passages should have been filtered out!");
+
+                Passage[] dotsPassed;
+                foreach (dotp; dots)
+                {
+                    if (gitp.type != dotp.type)
+                    {
+                        dotsPassed ~= dotp;
+                        continue;
+                    }
+
+                    if ((gitp.type == Private &&
+                            this.git.passageHandler.hash(dotp) == gitp) ||
+                            gitp == dotp)
+                    {
+                        // TODO: is it fine popping from the iterated range?
+                        //       Should be, since we break off the iteration
+                        //       below!
+                        dots.popFrontN(dotsPassed.length + 1);
+
+                        matrix ~= dotsPassed.map!(dotpassed =>
+                                [Nullable!Passage(), dotpassed.nullable]).array;
+
+                        if (gitp.type == Private)
+                            matrix ~= [dotp.nullable, dotp.nullable];
+                        else
+                            matrix ~= [gitp.nullable, dotp.nullable];
+                        continue gitloop;
+                    }
+                    else
+                        dotsPassed ~= dotp;
+                }
+
+                // didn't find a matching dotp!
+                enforce(gitp.type != Private, "Incoming private passage "
+                        ~"from Gitfile which could not be matched! "
+                        ~ "Gitfiles should not introduce new private passages!");
+                matrix ~= [gitp.nullable, Nullable!Passage()];
             }
+            // add rest of dots
+            foreach (dotp; dots)
+            {
+                // gitfile tries to remove a private passage??
+                enforce(dotp.type != Private, "Syncing to Dotfile: Removing "
+                        ~ "a private passage from Dotfile!!?? Gitfiles should not "
+                        ~ "manipulate private passages!");
+                matrix ~= [Nullable!Passage(), dotp.nullable];
+            }
+
+            debug {
+                import std.string : join;
+                logTrace("GitDot.syncTo: Matrix:\n%s",
+                    matrix.map!(row => "\t"~row.to!string).array.join("\n"));
+            }
+
+            this.dot.passages = matrix.filter!(row => !row[0].isNull)
+                                      .map!(row => row[0].get).array;
 
             this.dot.commentIndicator = this.git.commentIndicator;
             this.dot.hash = this.git.hash;
@@ -232,6 +309,30 @@ class GitDot
             Passage(Passage.Type.Git, ["git2"]),
             Passage(Passage.Type.Local, ["local1", "local2"],
                     gitdot.settings.localinfo)]);
+    }
+    version(unittest_all) unittest
+    {
+        auto gitdot = new GitDot("","");
+        gitdot.commentIndicator = "'";
+        gitdot.managed = true;
+        with (Passage.Type) gitdot.git.passages = [
+            Passage(Local, ["other1"], "othermashine"),
+            gitdot.git.passageHandler.hash(
+                Passage(Private, ["priv1", "priv2"], gitdot.settings.localinfo)),
+            Passage(Git, ["git1", "git2"]),
+            Passage(Local, ["local1"], gitdot.settings.localinfo),
+            Passage(Git, ["git3"])];
+        with (Passage.Type) gitdot.dot.passages = [
+            Passage(Private, ["priv1", "priv2"], gitdot.settings.localinfo),
+            Passage(Git, ["git1", "git2"]),
+            Passage(Local, ["local1"], gitdot.settings.localinfo)];
+
+        gitdot.syncTo!Dotfile();
+        with (Passage.Type) assert(gitdot.dot.passages == [
+                Passage(Private, ["priv1", "priv2"], gitdot.settings.localinfo),
+                Passage(Git, ["git1", "git2"]),
+                Passage(Local, ["local1"], gitdot.settings.localinfo),
+                Passage(Git, ["git3"])]);
     }
 }
 

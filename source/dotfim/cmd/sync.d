@@ -434,8 +434,8 @@ struct Sync
                     {
                         debug logTrace("Sync.4: Updating dotfile %s", gitdot.relfile);
 
-                        gitdot.syncTo!Dotfile();
-                        gitdot.dot.write();
+                        if (gitdot.syncTo!Dotfile())
+                            gitdot.dot.write();
 
                         // tell user if a dotfile's contents actually changed
                         if (dfUpdatees.canFind(gitdot))

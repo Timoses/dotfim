@@ -34,9 +34,9 @@ void main()
     Sync(dfm);
 
     gitdot.dot.passages.filter!((ref passage)
-                                => passage.type == Passage.Type.Local).array[0]
+                                => passage.type == Passage.Type.Private).array[0]
                        .lines[0] ~= "edited";
-    assert(gitdot.dot.passages!(Passage.Type.Local)[0].lines[0].endsWith("edited"));
+    assert(gitdot.dot.passages!(Passage.Type.Private)[0].lines[0].endsWith("edited"));
 
     Sync(dfm);
 
