@@ -36,7 +36,6 @@ struct Sync
     {
         debug logDebug("Sync:updateGit");
 
-        import std.stdio : writeln;
         if (!dfm.options.bNoRemote)
         {
             write("... Fetching remote repository ...");
@@ -207,14 +206,18 @@ struct Sync
 
                 if (gitdot.git.managed && !gitdot.dot.managed)
                 {
-                    debug logTrace("Sync.1: Dotfile not managed");
                     // update dotfile to be managed
                     dfUpdatees = uniq(dfUpdatees ~ gitdot).array;
 
                     // update gitfile in case unmanaged dotfile
                     // contains local lines
                     if (gitdot.dot.file.exists)
+                    {
                         gfUpdatees = uniq(gfUpdatees ~ gitdot).array;
+                        debug logTrace("Sync.1: Dotfile not managed");
+                    }
+                    else
+                        debug logTrace("Sync.1: Dotfile doesn't exist");
                 }
                 else if (gitdot.git.managed)
                 {
@@ -249,16 +252,19 @@ struct Sync
                     }
                     else // same git hash
                     {
-                        debug logTrace("Sync.1: Git and Dot hash are equal");
+                        debug string logentry = "Sync.1: Git and Dot hash are equal ... ";
                         // updates/changes in dotfile?
                         if (gitdot.dot != gitdot.git)
                         {
+                            debug logTrace(logentry ~ "Dotfile updated");
                             gfUpdatees = uniq(gfUpdatees ~ gitdot).array;
                         }
+                        else
+                            debug logTrace(logentry ~ "Equal Dot- and Gitfile");
                     }
                 }
                 else if (!gitdot.git.managed)
-                    debug logTrace("Sync.1: Gitfile is not managed");
+                    debug logTrace("Sync.1: Gitfile not managed");
             }
 
             debug {
@@ -383,10 +389,10 @@ struct Sync
                 }
                 catch (Exception e)
                 {
-                    writeln(e.msg);
+                    stderr.writeln(e.msg);
                     git.execute(["reset", "--hard"]);
-                    writeln("Error occured while updating the git repository. Please fix issues and try again.");
-                    writeln("Stopping sync.");
+                    stderr.writeln("Error occured while updating the git repository. Please fix issues and try again.");
+                    stderr.writeln("Stopping sync.");
                     load();
                     return;
                 }

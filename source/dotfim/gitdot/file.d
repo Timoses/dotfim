@@ -89,6 +89,9 @@ abstract class GitDotFile
         catch (PassageHandler.PassageHandlerException e)
             enforce(false, "Failed to load file \"" ~ this.file ~ "\"! Error: "
                     ~ typeof(e).stringof ~ " - " ~ e.msg);
+
+        debug logTrace("GitDotFile:loadInternal - Loaded passages: \n%(\t%s\n%)",
+                        this._passages);
     }
 
     private void retrieveHeaderInfo()
@@ -135,7 +138,6 @@ abstract class GitDotFile
                 lines[$-1] ~= " " ~ this.hash;
         }
 
-
         foreach (passage; passages)
         {
             lines ~= this.passageHandler.format!T(passage, this.managed);
@@ -157,7 +159,6 @@ abstract class GitDotFile
     Passage[] passages(Passage.Type[] types)()
     {
         import std.algorithm : filter, canFind;
-        //writeln(this._passages.hash); // ... store type passages if hash didn't change -> return them
         return this._passages.filter!(p => types.canFind(p.type)).array;
     }
 }
