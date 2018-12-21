@@ -1,78 +1,52 @@
 module dotfim.gitdot.gitfile;
 
+import dotfim.gitdot;
+import dotfim.gitdot.file;
+import dotfim.gitdot.dotfile;
+import dotfim.gitdot.passage;
 
-class Gitfile
+
+import std.stdio;
+
+class Gitfile : GitDotFile
 {
-    string file;
-
-    private
+    this(ref GitDot.Settings settings, string file)
     {
-        string[] _rawLines;
-
-        string _headerLine;
-        string[] _gitLines;
+        super(settings, file);
     }
 
-    this (string file)
+    override bool opEquals(Object obj)
     {
-        this.file = file;
-
-        // read contents of gitFile
-        read();
-    }
-
-    void read()
-    {
-        this._rawLines.length = 0;
-
+        import std.array : empty;
         import std.conv : to;
-        import std.stdio : File;
-        File git = File(this.file, "r");
-        foreach (line; git.byLine)
-            this._rawLines ~= line.to!string;
-        git.close();
-
-        import std.range : take, drop;
-        if (this._rawLines.length > 0)
+        import std.range : popFront, front;
+        import std.algorithm : each;
+        if (auto dot = obj.to!Dotfile)
         {
-            this._headerLine = this._rawLines.take(1)[0];
-            this._gitLines = this._rawLines.drop(1);
+            auto gits = this.passages;
+
+            with (Passage.Type) foreach(dotp; dot.passages)
+            {
+                while (!gits.empty && gits.front.type == Local
+                        && gits.front.localinfo != dotp.localinfo)
+                    gits.popFront();
+
+                // no more git passages?
+                if (gits.empty)
+                    return false;
+
+                auto gitp = gits.front();
+                gits.popFront();
+
+                if (gitp.lines != dotp.lines)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
-    }
-
-    // retrieves commendIndicator from headerLine
-    // in the format: "{CommentIndicator} {fileHeader}"
-    string retrieveCommentIndicator(string fileHeader)
-    {
-        import std.algorithm.searching : findSplitBefore;
-        auto split = this._headerLine.findSplitBefore(fileHeader);
-
-        import std.string : empty, strip;
-        if (split[1].empty)
-            return "";
         else
-            return split[0].strip;
+            return false;
     }
-
-    void write(bool bLeaveHeader = false)
-    {
-        this._rawLines.length = 0;
-        if (!bLeaveHeader)
-            this._rawLines ~= _headerLine;
-        this._rawLines ~= _gitLines;
-
-        import std.stdio : File;
-        import std.file : remove;
-        remove(this.file);
-        File git = File(this.file, "w");
-        foreach (line; this._rawLines)
-            git.writeln(line);
-        git.close();
-
-    }
-
-    @property string[] gitLines() { return this._gitLines; }
-    @property void gitLines(string[] lines) {
-        this._gitLines = lines; }
 }
 

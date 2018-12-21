@@ -1,132 +1,25 @@
 module dotfim.gitdot.dotfile;
 
-import std.file;
-import std.path;
-import std.conv;
+import dotfim.gitdot;
+import dotfim.gitdot.file;
+import dotfim.gitdot.gitfile;
 
-import std.stdio;
-
-import dotfim.section;
-import dotfim.git;
-
-class Dotfile
+class Dotfile : GitDotFile
 {
-    string file;
-
-    private
+    this(ref GitDot.Settings settings, string file)
     {
-        // read, updated and written
-        string[] _rawLines;
-
-        // read
-        string _headerLine;
+        super(settings, file);
     }
 
-    SectionHandler sectionHandler;
-
-    // whether Dotfile is already managed by DotfiM
-    bool managed;
-
-    this(string file, string commentIndicator, string managedHeader)
+    override bool opEquals(Object obj)
     {
-        this.file = file;
-        this._headerLine = managedHeader;
-        this.sectionHandler = new SectionHandler(commentIndicator);
-
-        if (!exists(this.file))
+        import std.conv : to;
+        if (auto git = obj.to!Gitfile)
         {
-            std.file.write(this.file, "");
-            this.managed = false;
-            return;
-        }
-        // Read content of home dotfile
-        File home = File(this.file, "r");
-        foreach(line; home.byLine)
-        {
-            this._rawLines ~= line.to!string;
-        }
-        home.close;
-
-        import std.range : empty;
-        string[] customLines;
-        if (!this._rawLines.empty && this._rawLines[0] == managedHeader)
-        {
-            this.managed = true;
-            customLines = this.sectionHandler.load(this._rawLines[1..$]);
+            return git.opEquals(this);
         }
         else
-        {
-            this.managed = false;
-            customLines = this._rawLines;
-        }
-
-        // move all customLines to LocalSection
-        this.sectionHandler.getSection!LocalSection.append(
-                Section.Part.Content, customLines);
-    }
-
-    @property string gitHash()
-    {
-        if (this.managed)
-            return getGitSection().gitHash;
-        else
-            return "";
-    }
-
-    @property void gitHash(string newHash)
-    {
-        getGitSection().gitHash = newHash;
-    }
-
-    @property string[] gitLines()
-    {
-        if (this.managed)
-        {
-            return getGitSection().get(Section.Part.Content);
-        }
-        else
-            return [];
-    }
-
-    @property void gitLines(string[] lines)
-    {
-        getGitSection().set(Section.Part.Content, lines);
-        this.managed = lines.length > 0;
-    }
-
-    @property string[] localLines()
-    {
-        return this.sectionHandler.getSection!(LocalSection)()
-                    .get(Section.Part.Content);
-    }
-
-    GitSection getGitSection()
-    {
-        return cast(GitSection)
-            (this.sectionHandler.getSection!(GitSection));
-    }
-
-    void write()
-    {
-        this.sectionHandler.generateSections();
-
-        import std.algorithm : stripLeft, stripRight;
-
-        this._rawLines.length = 0;
-        this._rawLines ~= this._headerLine;
-        this._rawLines ~= "";
-        this._rawLines ~= this.sectionHandler.getSectionLines!(GitSection)();
-        this._rawLines ~= "";
-        this._rawLines ~= this.sectionHandler.getSectionLines!(LocalSection)();
-
-        write(this._rawLines);
-    }
-
-    void write(string[] lines)
-    {
-        // replace file with new content
-        File home = File(this.file, "w");
-        foreach (line; lines)
-            home.writeln(line);
+            return false;
     }
 }
+

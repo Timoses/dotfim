@@ -6,12 +6,15 @@ import std.path : asNormalizedPath, asAbsolutePath, asRelativePath;
 import std.range : array;
 import std.stdio : write, writeln, stderr, readln;
 
+debug import vibe.core.log;
+
 import dotfim.dotfim;
 
 struct Add
 {
     DotfileManager dfm;
 
+    // dotfiles to be added
     string[] dotfiles;
 
     this(lazy DotfileManager dfm, const string arg)
@@ -36,6 +39,8 @@ struct Add
     // If the dotfile does not exist create it
     private void exec()
     {
+        debug logDebug("Add:exec %s", this.dotfiles);
+
         // sync now since after add() new gitHash is commited eventually
         import dotfim.cmd.sync;
         Sync(this.dfm);
@@ -55,6 +60,8 @@ struct Add
             bool bIsDotFile = bIsGitFile ? false
                 : file.canFind(settings.dotdir);
 
+            debug logTrace("%s is Git: %b | Dot: %b", file, bIsGitFile, bIsDotFile);
+
             if (!(bIsGitFile || bIsDotFile))
             {
                 // can't add a file outside of dot-/gitdir
@@ -62,7 +69,8 @@ struct Add
                 continue;
             }
 
-            if (findGitDot(file))
+            auto gitdot = findGitDot(file);
+            if (gitdot && gitdot.managed)
             {
                 stderr.writeln("File ", file, " is already managed by DotfiM");
                 continue;
@@ -86,7 +94,8 @@ struct Add
 
             if (!(bGitExists || bDotExists))
             {
-                stderr.writeln("File ", file, " does neither exist as gitfile nor as dotfile.");
+                stderr.writeln("File ", file,
+                        " does neither exist as gitfile nor as dotfile.");
                 continue;
             }
 
@@ -98,19 +107,18 @@ struct Add
             import std.string : chomp;
             string commentIndicator = readln().chomp();
 
-            try
+            if (!gitdot)
             {
-                createdGitDots ~= GitDot.create(
-                                          relFile,
-                                          commentIndicator,
-                                          settings.gitdir,
-                                          settings.dotdir);
+                debug logTrace("Add: gitdot does not exist -> Creating");
+                assert(!bGitExists); // shouldn't exist if gitdot wasn't found
+                gitdot = new GitDot(buildPath(settings.gitdir, relFile),
+                                    buildPath(settings.dotdir, relFile));
+                createdGitDots ~= gitdot;
             }
-            catch (Exception e)
-            {
-                import std.path : baseName;
-                stderr.writeln(file.baseName, " - Error while creating: ", e.msg);
-            }
+
+            gitdot.commentIndicator = commentIndicator;
+            gitdot.git.managed = true;
+            gitdot.git.write();
         }
 
         with (this.dfm) if (createdGitDots.length > 0)
@@ -124,15 +132,13 @@ struct Add
                         settings.gitdir).array ~ "\n";
             }
 
-            import std.algorithm : uniq;
-            import std.range : array;
-            gitdots = uniq!((e1,e2) => e1.dot.file == e2.dot.file)(createdGitDots ~ gitdots).array;
-
             commitAndPush("DotfiM Add: \n\n" ~ addedFiles);
 
-            // Sync dotfiles with new gitHash version
-            // and add new dotfiles
-            Sync(this.dfm);
+            load();
         }
+
+        // Sync dotfiles with new gitHash version
+        // and add new dotfiles
+        Sync(this.dfm);
     }
 }

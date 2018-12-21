@@ -1,10 +1,26 @@
 module dotfim.cmd.sync;
 
+import std.exception : enforce;
+
 debug
     import vibe.core.log;
 
 import dotfim.dotfim;
+import dotfim.gitdot.gitfile;
+import dotfim.gitdot.dotfile;
 
+
+import std.stdio;
+
+/**
+ * Updates the git folder by fetching from and pushing to remote git repository.
+ * In case remote and local branches have diverged, merging is attempted.
+ * Afterwards, Sync will iterate over all managed git files and check whether
+ * the respective dotfiles require an update and whether the dotfiles contain
+ * changes that need to be synchronized.
+ * If changes to the gitfiles were made these changes are pushed to the remote
+ * git repository.
+ */
 struct Sync
 {
     DotfileManager dfm;
@@ -23,36 +39,83 @@ struct Sync
         import std.stdio : writeln;
         if (!dfm.options.bNoRemote)
         {
-            writeln("... Fetching remote repository ...");
+            write("... Fetching remote repository ...");
+            stdout.flush;
             dfm.git.execute("fetch");
+            writeln(" Done");
         }
 
         string local = dfm.git.hash;
         string remote = dfm.git.remoteHash;
-        writeln("local: ", local);
-        writeln("remote: ", remote);
+        debug logDebugV("local: %s", local);
+        debug logDebugV("remote: %s", remote);
 
         // remote branch exists and differs
         if (remote.length > 0 && local != remote)
         {
             import std.algorithm : canFind;
+            import std.string : chomp;
+            string branchBase = dfm.git.execute("merge-base",
+                    dfm.dotfimGitBranch,
+                    "origin/" ~ dfm.dotfimGitBranch).output.chomp;
+            bool bBranchesDiverged = (branchBase != ""
+                                        && branchBase != local
+                                        && branchBase != remote)
+                                     ? true : false;
+
+            // Second: If branches had diverged, merge them back together
+            if (bBranchesDiverged)
+            {
+                debug logTrace("Sync:updateGit | branches diverged, branch base: %s",
+                                branchBase);
+
+                writeln("... Branches diverged! Attempting merge ...");
+
+                immutable string mergeBranchName = "merge-" ~ dfm.dotfimGitBranch;
+                scope(failure)
+                {
+                    dfm.git.execute(["checkout", dfm.dotfimGitBranch]);
+                    dfm.git.execute("branch", "-D", mergeBranchName);
+                }
+                // commit dotfiles to merge branch
+                dfm.git.execute(["checkout", "-b",
+                                    mergeBranchName,
+                                    dfm.dotfimGitBranch]);
+
+                if (dfm.git.merge(mergeBranchName
+                            , "origin/" ~ dfm.dotfimGitBranch))
+                {
+                    // take over merged branch
+                    dfm.git.execute("rebase", mergeBranchName, dfm.dotfimGitBranch);
+                    dfm.git.execute("branch", "-d", mergeBranchName);
+                }
+                else
+                {
+                    throw new Exception("Merge failed... Aborted dotfim sync!");
+                }
+
+                dfm.load();
+            }
+
             // remote branch is ahead -> checkout remote
             if (!dfm.git.execute("branch", "-a", "--contains", remote)
                     .output.canFind("* dotfim"))
             {
-                writeln("... Rebasing to remote repository ...");
+                write("... Rebasing to remote repository ...");
+                stdout.flush;
                 dfm.git.execute("rebase", "origin/" ~ dfm.dotfimGitBranch);
                 writeln("Rebased to remote branch: ", remote[0..6]);
                 dfm.load();
             }
-
             // else: local is ahead of remote?
-            if (!dfm.options.bNoRemote
+            else if (!dfm.options.bNoRemote
                     && !dfm.git.execute("branch", "--contains", local).output
                         .canFind("origin/dotfim"))
             {
-                writeln("... Pushing to remote repository ...");
+                write("... Pushing to remote repository ...");
+                stdout.flush;
                 dfm.git.push(dfm.dotfimGitBranch);
+                writeln(" Done");
             }
         }
     }
@@ -92,101 +155,127 @@ struct Sync
      */
     private void exec()
     {
+        import std.algorithm : canFind, each, map;
+        import std.algorithm : uniq;
+        import std.array : join;
+        import std.conv : to;
+        import std.file : exists;
+        import std.format : format;
+        import std.path : asRelativePath;
+        import std.range : array, drop;
+        import std.string : join, splitLines, chomp;
+
+        import dotfim.gitdot;
+        import dotfim.util : askContinue;
+
         debug logDebug("Sync:exec");
+
         with(this.dfm)
         {
-            string curGitHash = git.hash;
+            struct GitHash
+            {
+                private string _hash;
+                void set(string hash) {
+                    _hash = hash;
+                    gitdots.each!(gitdot => gitdot.git.hash = _hash); }
 
-            import dotfim.gitdot;
-            import dotfim.util : askContinue;
+                void opAssign(string hash) { set(hash); }
+                string opCall() { return _hash; }
+
+                bool opEquals(string other)
+                {
+                    return _hash == other;
+                }
+            }
+            GitHash curhash;
+
+            curhash = git.hash;
+
+            enforce(git.remoteHash == git.hash, "Git is not updated correctly, "
+                    ~ "remote and local hash differ!\nlocal: %s\n remote: %s"
+                    .format(git.hash, git.remoteHash));
 
             GitDot[] dfUpdatees;
             GitDot[] gfUpdatees;
             GitDot[] divergees;
 
-            import std.string : chomp;
-            string branchBase = git.execute("merge-base",
-                    dotfimGitBranch,
-                    "origin/" ~ dotfimGitBranch).output.chomp;
-            bool bBranchesDiverged;
-            if (branchBase != ""
-                        && branchBase != curGitHash
-                        && branchBase != git.remoteHash)
-                bBranchesDiverged = true;
-
             // 1: Collect files that need update
             foreach (gitdot; gitdots)
             {
-                if (!gitdot.dot.managed)
+
+                debug logTrace("Sync.1: Checking gitdot " ~ gitdot.git.file);
+
+                if (gitdot.git.managed && !gitdot.dot.managed)
                 {
-                    import std.algorithm : uniq;
-                    import std.array;
+                    debug logTrace("Sync.1: Dotfile not managed");
+                    // update dotfile to be managed
                     dfUpdatees = uniq(dfUpdatees ~ gitdot).array;
+
+                    // update gitfile in case unmanaged dotfile
+                    // contains local lines
+                    if (gitdot.dot.file.exists)
+                        gfUpdatees = uniq(gfUpdatees ~ gitdot).array;
                 }
-                else
+                else if (gitdot.git.managed)
                 {
-                    string dotGitHash = gitdot.dot.gitHash;
-                    import std.exception : enforce;
-                    enforce(dotGitHash != "", "dotfile's Git Section commit hash can not be empty");
-                    if (dotGitHash != curGitHash)
+                    string dothash = gitdot.dot.hash;
+                    enforce(dothash != "", "Hash of managed dotfile can not be empty");
+                    if (dothash != curhash)
                     {
+                        debug logTrace("Sync.1: Dot hash and git hash differ");
+
                         // dotfile will require rewrite
                         dfUpdatees ~= gitdot;
 
                         // get content of old git file
-                        import std.path : asRelativePath;
-                        import std.conv : to;
                         string relGitPath = asRelativePath(
                                 gitdot.git.file,
                                 settings.gitdir).to!string;
-                        import std.string : splitLines;
-                        import std.range : drop;
-                        string[] oldGitLines =
+                        auto oldgit = new Gitfile(gitdot.settings, gitdot.git.file);
+                        oldgit.load(
+                        //string[] oldGitLines =
                             git.execute("show",
-                                dotGitHash ~ ":" ~ relGitPath).output
-                                .splitLines()
-                                .drop(1); // drop header line
+                                dothash ~ ":" ~ relGitPath).output
+                                .splitLines());
+                         //       .drop(1); // drop header line
 
                         // and check for custom updates
-                        if (oldGitLines != gitdot.dot.gitLines)
+//                        if (oldGitLines != gitdot.dot.gitLines)
+                        if (oldgit != gitdot.dot)
                         {
-                            import std.algorithm : uniq;
-                            import std.array;
+                            debug logTrace("Sync.1: Dot content differs as well!");
                             divergees = uniq(divergees ~ gitdot).array;
                         }
                     }
                     else // same git hash
                     {
+                        debug logTrace("Sync.1: Git and Dot hash are equal");
                         // updates/changes in dotfile?
-                        if (gitdot.dot.gitLines != gitdot.git.gitLines)
+                        if (gitdot.dot != gitdot.git)
                         {
-                            import std.algorithm : uniq;
-                            import std.array;
                             gfUpdatees = uniq(gfUpdatees ~ gitdot).array;
                         }
                     }
                 }
+                else if (!gitdot.git.managed)
+                    debug logTrace("Sync.1: Gitfile is not managed");
             }
 
             debug {
-                import std.algorithm : map;
                 logDebugV("Sync.1-CollectFiles | dfUpdatees: %s, "
                             ~ " | gfUpdatees: %s | divergees: %s"
-                            , dfUpdatees.map!((d) => d.dot.file)
-                            , gfUpdatees.map!((g) => g.git.file)
-                            , divergees.map!((d) => d.dot.file));
+                            , dfUpdatees.map!((d) => d.relfile)
+                            , gfUpdatees.map!((g) => g.relfile)
+                            , divergees.map!((d) => d.relfile));
             }
 
+
             // 2: Merge
-            if (bBranchesDiverged || divergees.length > 0)
+            if (divergees.length > 0)
             {
-                import std.algorithm : map;
-                import std.array : join;
-                import std.conv : to;
                 // First: merge diverged dotfiles into dotfimBranch
                 if (divergees.length)
                 {
-                    import std.path : asRelativePath;
                     if (!askContinue("The following files have diverged:\n"
                             ~ divergees.map!((e) => asRelativePath(
                                     e.git.file,
@@ -200,11 +289,10 @@ struct Sync
                     // TODO: support multiple different dotfile hashes
                     //       (however that might happen) -> multiple merge
                     //       branches and merge commits
-                    string commonBaseHash = divergees[0].dot.gitHash;
+                    string commonBaseHash = divergees[0].dot.hash;
                     foreach (gitdot; divergees)
                     {
-                        import std.exception : enforce;
-                        enforce(gitdot.dot.gitHash == commonBaseHash,
+                        enforce(gitdot.dot.hash == commonBaseHash,
                                 "Found differing git hashes in divergent "
                                 ~ "dotfiles. Currently only one merge base "
                                 ~ "base is supported! Aborting Merge.");
@@ -221,10 +309,11 @@ struct Sync
                     git.execute(["checkout", "-b",
                                         mergeBranchName,
                                         commonBaseHash]);
+
                     // write dotfiles updates to gitfiles
                     foreach (gitdot; divergees)
                     {
-                        gitdot.git.gitLines = gitdot.dot.gitLines;
+                        gitdot.syncTo!Gitfile();
                         gitdot.git.write();
                         git.execute("add", gitdot.git.file);
                     }
@@ -252,43 +341,11 @@ struct Sync
                         git.commit("Merged update\n\n" ~ mergedFiles,
                                             true);
 
-                        curGitHash = git.hash;
+                        curhash = git.hash;
 
                         // read merged contents from gitfiles
                         foreach (gitdot; divergees)
-                            gitdot.git.read();
-                    }
-                    else
-                    {
-                        throw new Exception("Merge failed... Aborted dotfim sync!");
-                    }
-                }
-                // Second: If branches had diverged, merge them back together
-                if (bBranchesDiverged)
-                {
-                    immutable string mergeBranchName = "merge-" ~ dotfimGitBranch;
-                    scope(failure)
-                    {
-                        git.execute(["checkout", dotfimGitBranch]);
-                        git.execute("branch", "-D", mergeBranchName);
-                    }
-                    // commit dotfiles to merge branch
-                    git.execute(["checkout", "-b",
-                                        mergeBranchName,
-                                        dotfimGitBranch]);
-
-                    if (git.merge(mergeBranchName
-                                , "origin/" ~ dotfimGitBranch))
-                    {
-                        // take over merged branch
-                        git.execute("rebase", mergeBranchName, dotfimGitBranch);
-                        git.execute("branch", "-d", mergeBranchName);
-
-                        curGitHash = git.hash;
-
-                        // read new gitfile contents
-                        foreach (gitdot; gitdots)
-                            gitdot.git.read();
+                            gitdot.git.load();
                     }
                     else
                     {
@@ -305,44 +362,49 @@ struct Sync
                 {
                     foreach (gitdot; gfUpdatees)
                     {
-                        gitdot.git.gitLines = gitdot.dot.gitLines;
-                        gitdot.git.write();
-                        git.execute("add", gitdot.git.file);
-                        import std.conv : to;
-                        import std.path : asRelativePath;
-                        changedFiles ~= asRelativePath(gitdot.git.file,
-                                            settings.gitdir).to!string
-                                        ~ "\n";
+                        debug logTrace("Sync.3: Updating gitfile %s", gitdot.relfile);
+
+                        if (gitdot.syncTo!Gitfile())
+                        {
+                            gitdot.git.write();
+                            git.execute("add", gitdot.git.file);
+                            changedFiles ~= asRelativePath(gitdot.git.file,
+                                                settings.gitdir).to!string
+                                            ~ "\n";
+                        }
                     }
 
-                    import std.string : chomp;
-                    changedFiles = changedFiles.chomp;
+                    if (changedFiles.length)
+                    {
+                        changedFiles = changedFiles.chomp;
 
-                    commitAndPush("DotfiM Sync: \n\n" ~ changedFiles);
+                        commitAndPush("DotfiM Sync: \n\n" ~ changedFiles);
+                    }
                 }
                 catch (Exception e)
                 {
-                    import std.stdio : writeln;
                     writeln(e.msg);
                     git.execute(["reset", "--hard"]);
                     writeln("Error occured while updating the git repository. Please fix issues and try again.");
                     writeln("Stopping sync.");
+                    load();
                     return;
                 }
 
                 scope(success)
                 {
-                    import std.stdio : writeln;
-                    curGitHash = git.hash;
-                    writeln("Git repo files synced:");
-                    import std.algorithm : map;
-                    import std.string : splitLines, join;
-                    writeln(changedFiles
-                            .splitLines
-                            .map!((e) => "\t" ~ e)
-                            .join("\n"));
+                    if (changedFiles.length)
+                    {
+                        curhash = git.hash;
+                        writeln("Git repo files synced:");
+                        writeln(changedFiles
+                                .splitLines
+                                .map!((e) => "\t" ~ e)
+                                .join("\n"));
+                    }
                 }
             }
+
 
             // 4: Update dotfiles
             // if commits done or if oldGitHash found
@@ -350,12 +412,10 @@ struct Sync
                     && dfUpdatees.length == 0
                     && divergees.length == 0)
             {
-                import std.stdio : writeln;
                 writeln("Everything's already up to date");
             }
             else if (gfUpdatees.length > 0 || dfUpdatees.length > 0)
             {
-                import std.stdio : writeln;
                 writeln("Dotfiles synced:");
 
                 void dfUpdate(GitDot[] dfs)
@@ -366,13 +426,11 @@ struct Sync
 
                     foreach (gitdot; dfs)
                     {
-                        gitdot.dot.gitLines = gitdot.git.gitLines;
-                        gitdot.dot.gitHash = curGitHash;
+                        debug logTrace("Sync.4: Updating dotfile %s", gitdot.relfile);
+
+                        gitdot.syncTo!Dotfile();
                         gitdot.dot.write();
 
-                        import std.algorithm : canFind;
-                        import std.conv : to;
-                        import std.path : asRelativePath;
                         // tell user if a dotfile's contents actually changed
                         if (dfUpdatees.canFind(gitdot))
                             writeln("\t" ~
@@ -400,6 +458,7 @@ unittest
     import std.path : buildPath;
     import std.stdio;
     import dotfim.cmd : Add, Init, Test;
+    import dotfim.gitdot.passage;
 
     string testpath = buildPath(tempDir(), "dotfim", "unittest-add");
     if (testpath.exists) testpath.rmdirRecurse;
@@ -418,6 +477,7 @@ unittest
         Sync(dfm);
         oldGitHash = dfm.git.hash;
         assert(dfm.gitdots.length == 2);
+        // Need to use '#' for commentIndicator!
         Add(dfm, testfile);
         mixin(checkHash);
         auto gitdot = dfm.findGitDot(testfile);
@@ -426,7 +486,7 @@ unittest
         // write entry
         enum string testentry = "This is a test entry to be synced.";
         auto dfile = gitdot.dot;
-        dfile.gitLines = dfile.gitLines ~ testentry;
+        dfile.passages ~= Passage(Passage.Type.Git, [testentry]);
         dfile.write;
         Sync(dfm);
         mixin(checkHash);
@@ -435,8 +495,8 @@ unittest
     assert(dfm.gitdots.length == 3);
     auto gitdot = dfm.findGitDot(testfile);
     assert(gitdot);
-    assert(gitdot.dot.gitLines == gitdot.git.gitLines);
-    assert(gitdot.dot.gitHash == dfm.git.hash);
+    assert(gitdot.dot.passages!(Passage.Type.Git) == gitdot.git.passages!(Passage.Type.Git));
+    assert(gitdot.dot.hash == dfm.git.hash);
 }
 
 // Test if a line is synced correctly between two mashines
@@ -444,10 +504,11 @@ unittest
 {
     import std.algorithm : each;
     import std.conv : to;
-    import std.file : tempDir, rmdirRecurse, exists;
+    import std.file;
     import std.path : buildPath, asRelativePath;
     import std.stdio;
     import dotfim.cmd : Test, Init, Sync;
+    import dotfim.gitdot.passage;
 
     enum string testline = "This is a test line to be synced";
 
@@ -467,10 +528,10 @@ unittest
     Sync(dfm2);
 
     auto dot1 = dfm1.gitdots[0].dot;
-    dot1.gitLines = dot1.gitLines ~ testline;
+    dot1.passages ~= Passage(Passage.Type.Local, [testline], dot1.settings.localinfo);
     dot1.write;
     Sync(dfm1);
     Sync(dfm2);
     auto gitdot2 = dfm2.findGitDot(asRelativePath(dot1.file, dfm1.settings.dotdir).to!string);
-    assert(gitdot2.dot.gitLines[$-1] == testline);
+    assert(gitdot2.dot.passages!(Passage.Type.Local)[$-1].lines == [testline]);
 }

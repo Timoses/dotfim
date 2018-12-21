@@ -2,7 +2,17 @@
 import dotfim.dotfim;
 import dotfim.cmd;
 
-void main(string[] args)
+debug shared static this()
 {
-    CmdHandler.executeCLI(args);
+    import vibe.core.log;
+    setLogLevel(LogLevel.trace);
+}
+
+version(unittest){}
+else
+{
+    void main(string[] args)
+    {
+        CmdHandler.executeCLI(args);
+    }
 }

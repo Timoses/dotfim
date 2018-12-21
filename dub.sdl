@@ -1,0 +1,9 @@
+name "dotfim"
+authors "Timo Funke"
+description "DotfiM - A Dotfile Manager"
+copyright "Copyright © 2017-2019, Timo Funke"
+license "MIT"
+
+dependency "vibe-d:data" version="~>0.8.4"
+dependency "vibe-core" version="~>1.4.5"
+

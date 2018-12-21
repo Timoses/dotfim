@@ -4,6 +4,7 @@ import std.array : array;
 import std.conv : to;
 import std.exception : enforce;
 import std.file : tempDir;
+import std.format : format;
 import std.path : asAbsolutePath, asNormalizedPath, buildPath;
 import std.stdio : writeln;
 
@@ -18,6 +19,8 @@ struct Test
     immutable string dir;
     // git directory
     immutable string gitdir;
+
+    string[] files;
 
     Options options;
     alias options this;
@@ -81,7 +84,7 @@ struct Test
 
     private void createTestFiles()
     {
-        import std.algorithm : each;
+        import std.algorithm : each, map;
         import std.file : write;
         import std.format : format;
 
@@ -94,7 +97,7 @@ struct Test
 
         // Gitfiles
         ["1", "2"].each!(n => write(buildPath(this.gitdir, ".file"~n),
-                   commentIndicator ~ " " ~ GitDot.fileHeader
+                   commentIndicator ~ " " ~ GitDot.header
                    ~ format(q"EOF
 
 git%s line 1
@@ -113,6 +116,8 @@ dot%s line 1
 dot%s line 2
 EOF"
                 , n, n)));
+
+        this.files ~= ["1", "2", "3"].map!(num => ".file"~num).array;
     }
 }
 

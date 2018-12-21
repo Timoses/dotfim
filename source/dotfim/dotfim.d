@@ -8,17 +8,6 @@ import dotfim.git;
 import dotfim.gitdot;
 import dotfim.util;
 
-version(unittest)
-    shared static this()
-    {
-        import vibe.core.log;
-        setLogLevel(LogLevel.trace);
-    }
-
-//.. todo:
-//    * dfm passes ALL gitfiles to GitDot, which itself keeps track of if it is managed or not
-//    * dfm keeps track of the git hash!! : It describes the state of dfm. After a Sync.updateGit -> it can track whether files have been removed or added, and then remove/add these GitDots and also trigger a reloading of the current GitDots!
-
 class DotfileManager
 {
     enum dotfimGitBranch = "dotfim";
@@ -28,6 +17,9 @@ class DotfileManager
 
     mixin SettingsTemplate;
     Settings settings;
+
+    // git hash of currently loaded gitdir contents
+    private string _hash;
 
     Git git;
 
@@ -77,6 +69,8 @@ class DotfileManager
         //    -> decide which files require reloading
         //    -> or add/remove
 
+        this._hash = this.git.hash;
+
         this.gitdots.length = 0;
 
         import std.algorithm : filter, any, startsWith, map;
@@ -88,14 +82,18 @@ class DotfileManager
                         .filter!(file =>
                             !excludedDots
                                 .any!(ex => file.asRelativePath(this.settings.gitdir)
-                                                .startsWith(ex)))
+                                                .startsWith(ex))
+                            && file != this.settings.settingsFile
+                            && file.isFile)
                         .map!((gitfile) {
                             string dotfile =
                                     buildPath(this.settings.dotdir,
                                         gitfile.asRelativePath(this.settings.gitdir)
                                                .to!string);
-                            return new GitDot(gitfile, dotfile).ifThrown(null);
-                        }).filter!(e => e !is null).array;
+                            auto gitdot = new GitDot(gitfile, dotfile);
+                            gitdot.git.hash = this._hash;
+                            return gitdot;
+                        }).array;
     }
 
     void commitAndPush(string commitMsg)
@@ -120,8 +118,8 @@ class DotfileManager
         }
     }
 
-    // Finds GitDot based on either a relative file path to git/dot dir or an
-    // absolute file path
+    // Finds GitDot based on either a file path relative to git/dot dir or an
+    // absolute path
     GitDot findGitDot(string file)
     {
         import std.algorithm : any, startsWith;
@@ -135,7 +133,7 @@ class DotfileManager
         if (file.isAbsolute && ![this.settings.dotdir, this.settings.gitdir]
                 .any!((dir) => file.startsWith(dir)))
             return null;
-        else
+        else if (!file.isAbsolute)
         {
             finddot = buildPath(this.settings.dotdir, file);
             findgit = buildPath(this.settings.gitdir, file);

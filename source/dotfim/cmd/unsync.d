@@ -4,6 +4,7 @@ import std.stdio : writeln, write;
 
 import dotfim.dotfim;
 
+
 struct Unsync
 {
     DotfileManager dfm;
@@ -18,9 +19,10 @@ struct Unsync
     private void exec()
     {
         import dotfim.util : askContinue;
-        if (!askContinue("Unsync will unmanage all dotfiles managed by DotfiM\n"
+        if (!askContinue("Unsync will unmanage (dotfim remove) all dotfiles "
+                      ~ "managed by DotfiM.\n"
                       ~ "Additionally, your current setup will be removed\n"
-                      ~ "Are you sure to continue? (y/n)", "y"))
+                      ~ "Are you sure to continue? (y/n) ", "y"))
             return;
 
         with (this.dfm)
@@ -28,8 +30,8 @@ struct Unsync
             string[] files;
             foreach(gitdot; dfm.gitdots)
             {
-                import std.range : array;
-                files ~= gitdot.git.file;
+                if (gitdot.managed)
+                    files ~= gitdot.git.file;
             }
 
             // unmanage all files
@@ -40,11 +42,6 @@ struct Unsync
                 Remove(this.dfm, files);
             }
             writeln("All files successfully unmanaged.");
-
-            // remove dotfim repo
-            import std.file : rmdirRecurse, exists;
-            if (exists(settings.gitdir))
-                rmdirRecurse(settings.gitdir);
 
             // remove
             write("Removing settings ...");

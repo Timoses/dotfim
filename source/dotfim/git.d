@@ -156,19 +156,24 @@ class Git
         import std.string : splitLines;
         import std.algorithm : map;
         import std.array : join;
-        writeln("|-- Git Merge ----");
+        writeln();
+        writeln("/-- Git Merge ----\\");
         writeln(res.output.splitLines().map!((e) => "| " ~ e).join("\n"));
-        writeln("|-----------------");
+        writeln("\\----------------/");
 
         if (res.status > 0)
         { // git conflict
             writeln("| Git merge seems to have been unsuccessful.");
             writeln("| Attempting git merge tool");
-            writeln("|-- Git Merge Tool ----");
+            writeln("/-- Git Merge Tool ----\\");
             import std.process : spawnProcess, wait;
             auto pid = spawnProcess(["git", "-C", this.dir, "mergetool"]);
-            wait(pid);
-            writeln("|----------------------");
+
+            scope(exit) {
+                writeln();
+                writeln("\\----------------------/");
+                writeln();
+            }
 
             // git merge tool successful?
             if (wait(pid) == 0)

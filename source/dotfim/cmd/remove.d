@@ -37,7 +37,7 @@ struct Remove
         import dotfim.cmd.sync;
         Sync(this.dfm);
 
-        writeln("------------------------");
+        writeln("---------Remove---------");
 
         string unmanagedFiles;
         string[] filesNotManaged;
@@ -47,36 +47,30 @@ struct Remove
             import dotfim.gitdot;
             GitDot found = findGitDot(file);
 
-            if (!found)
+            if (!found || !found.managed)
             {
                 filesNotManaged ~= file;
                 continue;
             }
 
-            // remove header from gitFile
-            found.git.write(true);
+            found.managed = false;
+            found.git.write();
+            found.dot.write();
 
             git.execute("add", found.git.file);
 
             import std.range : array;
             unmanagedFiles ~= asRelativePath(found.git.file,
                         settings.gitdir).array ~ "\n";
-
-            // write only local section to dotfile
-            with (found.dot)
-                write(localLines);
-
-            import std.algorithm.mutation : remove;
-            gitdots = gitdots.remove!((a) => a == found);
         }
 
         import std.string : splitLines, join;
         import std.algorithm : map;
         with (this.dfm) if (unmanagedFiles != "")
         {
-            commitAndPush("DotfiM Unmanage: \n\n" ~ unmanagedFiles);
+            commitAndPush("DotfiM Remove: \n\n" ~ unmanagedFiles);
 
-            writeln("Unmanaged:");
+            writeln("Removed:");
             writeln(unmanagedFiles
                         .splitLines
                         .map!((e) => "\t" ~ e)
