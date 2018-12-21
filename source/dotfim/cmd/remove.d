@@ -17,7 +17,7 @@ struct Remove
     this(lazy DotfileManager dfm, string[] args = null)
     {
         import std.exception : enforce;
-        enforce(args.length > 1, "Usage: dotfim add <file1> <file2> ... <fileN>");
+        enforce(args.length > 1, "Usage: dotfim remove <file1> <file2> ... <fileN>");
 
         // sanitize paths
         this.dotfiles = args[1..$].map!((dotfile) =>
