@@ -1,6 +1,7 @@
 module dotfim.cmd.init;
 
 import std.algorithm : canFind, map;
+import std.conv : to;
 import std.exception : enforce;
 import std.file : exists, mkdir, rmdir, rmdirRecurse;
 import std.path : asAbsolutePath, asNormalizedPath, buildPath, dirName, isValidPath;
@@ -24,7 +25,7 @@ struct Init
     Options options;
     alias options this ;
 
-    this(string[] args = null)
+    this(string[] args)
     {
         this.options = Options(args);
         if (this.options.helpWanted)
@@ -98,7 +99,7 @@ struct Init
 
         settings.save();
 
-        return new DotfileManager(settings);;
+        return new DotfileManager(settings);
     }
 }
 

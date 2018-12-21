@@ -1,5 +1,6 @@
 module dotfim.gitdot.gitdot;
 
+import std.array : array;
 import std.exception : enforce;
 import std.file : exists;
 
