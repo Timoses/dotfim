@@ -13,8 +13,11 @@ You can also [Test DotfiM](#test-dotfim) to see if you like it.
 <!-- vim-markdown-toc GFM -->
 
 * [Installation](#installation)
-    * [Requirements](#requirements)
+    * [Container image](#container-image)
+        * [Using Docker](#using-docker)
     * [Build](#build)
+        * [Requirements](#requirements)
+        * [Build](#build-1)
 * [Usage](#usage)
     * [Passages](#passages)
     * [Test DotfiM](#test-dotfim)
@@ -30,14 +33,38 @@ You can also [Test DotfiM](#test-dotfim) to see if you like it.
 
 
 ## Installation
+You can either [build](#build) the binary yourself or use a [container image](#container-image).
 
-### Requirements
+### Container image
+
+#### Using Docker
+```
+alias dotfim='docker run -it --rm -v `pwd`:/dotfim/git -v `echo $HOME`:/dotfim/dot --env DOTFIM_LOCALINFO=`hostname` timoses/dotfim'
+```
+Initialize with:
+```
+dotfim init --gitdir /dotfim/git/git --dotdir /dotfim/dot <remoteRepoURL>
+```
+
+If your Git repository resides on your file system, you also need to mount it into the container:
+```
+alias dotfim='docker run -it --rm -v `pwd`:/dotfim/git -v `echo $HOME`:/dotfim/dot -v <GitRepositoryPath>:/dotfim/repo.git --env DOTFIM_LOCALINFO=`hostname` timoses/dotfim'
+```
+Initialize with:
+```
+dotfim init --gitdir /dotfim/git/git --dotdir /dotfim/dot /dotfim/repo.git
+```
+
+
+
+### Build
+#### Requirements
 - D compiler (https://dlang.org/download.html)
 - DUB "Package and build management system for D" (http://code.dlang.org/download)
 
 *Tip: Use [D Version Manager](https://github.com/jacob-carlborg/dvm) to install both*
 
-### Build
+#### Build
 Download DotfiM [here](https://github.com/Timoses/dotfim/releases/latest) and build the binary:
 ```
 cd dotfim
