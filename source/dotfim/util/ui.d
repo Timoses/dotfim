@@ -2,7 +2,7 @@ module dotfim.util.ui;
 
 import std.conv : to;
 import std.path : isValidPath, asNormalizedPath, asAbsolutePath;
-import std.stdio : write, readln;
+import std.stdio : write, readln, stdout;
 import std.string : chomp;
 
 bool askContinue(string question, string yes)
@@ -23,6 +23,7 @@ string askPath(string description, string defaultpath)
     {
         write(description, " (default: ",
                 defaultpath, "): ");
+        stdout.flush;
 
         enteredPath = readln().chomp();
 
