@@ -4,7 +4,7 @@ import std.algorithm : map;
 import std.conv : to;
 import std.path : asNormalizedPath, asAbsolutePath, asRelativePath;
 import std.range : array;
-import std.stdio : write, writeln, stderr, readln;
+import std.stdio : write, writeln, stderr, readln, stdout;
 
 debug import vibe.core.log;
 
@@ -105,6 +105,7 @@ struct Add
             write("Please specify the comment indicator for file ",
                     relFile,
                     ": ");
+            stdout.flush;
             import std.string : chomp;
             string commentIndicator = readln().chomp();
 

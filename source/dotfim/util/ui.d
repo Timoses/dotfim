@@ -8,6 +8,7 @@ import std.string : chomp;
 bool askContinue(string question, string yes)
 {
     write(question);
+    stdout.flush;
 
     string answer;
     answer = readln().chomp();
