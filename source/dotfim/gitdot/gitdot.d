@@ -50,8 +50,17 @@ class GitDot
 
     static this()
     {
-        import std.socket : Socket;
-        this.settings.localinfo = Socket.hostName;
+        try
+        {
+            import std.process : environment;
+            auto locinfo = environment["DOTFIM_LOCALINFO"];
+            this.settings.localinfo = locinfo;
+        }
+        catch (Exception e)
+        {
+            import std.socket : Socket;
+            this.settings.localinfo = Socket.hostName;
+        }
     }
 
     this(string gitfile, string dotfile)
