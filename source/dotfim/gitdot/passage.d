@@ -15,7 +15,8 @@ struct Passage
         Invalid,
         Git,
         Local,
-        Private
+        Private,
+        Shebang
     }
 
     Type type;
@@ -80,19 +81,25 @@ static class PassageHandler
     static Passage[] read(T)(const(GitDot.Settings) settings, string[] lines, bool managed)
     {
         import std.algorithm : find, findSplitAfter, canFind, startsWith;
-        import std.range : front;
-        import std.string : splitLines, split, strip;
+        import std.range : front, popFront;
+        import std.string : splitLines, split, strip, stripLeft;
 
         Passage[] passages;
         Passage.Type type;
 
+        if (lines.front.startsWith("#!"))
+        {
+            passages ~= Passage(Passage.Type.Shebang, [lines.front.stripLeft("#!")]);
+            lines.popFront;
+        }
+
         if (!managed)
         {
             static if (is (T == Dotfile))
-                return [Passage(Passage.Type.Private, lines,
-                                settings.localinfo)];
+                return passages ~ Passage(Passage.Type.Private, lines,
+                                settings.localinfo);
             else if (is (T == Gitfile))
-                return [Passage(Passage.Type.Git, lines)];
+                return passages ~ Passage(Passage.Type.Git, lines);
         }
 
         // true if previous line indicates a passage span (# { ... # })
@@ -196,6 +203,7 @@ static class PassageHandler
     {
         import std.conv : to;
         import std.format : format;
+        import std.range : front;
 
         auto control = "%s %s ".format(settings.commentIndicator,
                               this.controlStatement);
@@ -266,6 +274,12 @@ static class PassageHandler
 
                     return lines;
                 }
+            case Shebang:
+                assert(settings.commentIndicator == "#",
+                        "Shebang is only valid for '#' comment indicator");
+                assert(passage.lines.length == 1,
+                        "Shebang passage should only contain one line");
+                return ["#!" ~ passage.lines.front];
             case Invalid:
                 assert(false);
 

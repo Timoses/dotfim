@@ -119,18 +119,36 @@ class GitDot
             if (!dot.managed)
             {
                 // unmanaged content is private!
-                assert(dot.passages.length == 1 &&
-                        dot.passages[0].type == Passage.Type.Private,
+                assert((dot.passages.length == 1 &&
+                        dot.passages[0].type == Passage.Type.Private)
+                        || (dot.passages.all!(p => [Passage.Type.Private,
+                                                    Passage.Type.Shebang]
+                                                    .canFind(p.type))
+                            && dot.passages.length == 2),
                         "Unmanaged dotfile should only have one private passage "
-                        ~ "containing all its content");
+                        ~ "containing all its content and optionally a shebang "
+                        ~ "passage");
 
-                // Does the private passage already exist?
+                auto privatePassages = dot.passages!(Passage.Type.Private);
+                assert(privatePassages.length == 1,
+                        "Unmanaged dotfile should only have one private passage containing all its content!");
+
+                auto shebangPassages = dot.passages!(Passage.Type.Shebang);
+                assert(shebangPassages.length <= 1, "Only up to 1 shebang passage "
+                        ~ "expected!");
+
+                // Does Git already contain the passages?
+                // (Usually not the case, though one tests case provokes it!)
                 if (git.passages.canFind!(passage => passage ==
-                                PassageHandler.hash(dot.passages[0])))
+                                        PassageHandler.hash(privatePassages[0]))
+                        && (shebangPassages.length == 0 ||
+                            git.passages.canFind!(gitp => gitp ==
+                                        shebangPassages[0])))
                     return false;
 
-                git.passages ~= [PassageHandler.hash(dot.passages[0])];
-
+                git.passages ~= [PassageHandler.hash(privatePassages[0])]
+                                    ~ ( shebangPassages.length > 0 ?
+                                        [shebangPassages[0]] : [] );
                 return true;
             }
             else with(Passage.Type)

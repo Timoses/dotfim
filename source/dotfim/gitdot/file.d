@@ -114,7 +114,16 @@ abstract class GitDotFile
         debug logDebug("GitDotFile:write %s %s",
                  T.stringof, this.file);
 
+        import std.algorithm : filter;
+
         string[] lines;
+
+        auto shebangPassage = passages!(Passage.Type.Shebang);
+        if (shebangPassage.length)
+        {
+            assert(shebangPassage.length == 1, "Only one Shebang passage allowed");
+            lines ~= PassageHandler.format!T(this.settings, shebangPassage[0], this.managed);
+        }
 
         if (this.managed)
         {
@@ -123,7 +132,8 @@ abstract class GitDotFile
                 lines[$-1] ~= " " ~ this.hash;
         }
 
-        foreach (passage; passages)
+        foreach (passage; passages.filter!
+                                    (p => p.type != Passage.Type.Shebang).array)
         {
             lines ~= PassageHandler.format!T(this.settings, passage, this.managed);
         }
