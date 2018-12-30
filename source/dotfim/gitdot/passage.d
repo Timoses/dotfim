@@ -81,11 +81,14 @@ static class PassageHandler
     static Passage[] read(T)(const(GitDot.Settings) settings, string[] lines, bool managed)
     {
         import std.algorithm : find, findSplitAfter, canFind, startsWith;
-        import std.range : front, popFront;
+        import std.range : front, popFront, empty;
         import std.string : splitLines, split, strip, stripLeft;
 
         Passage[] passages;
         Passage.Type type;
+
+        if (lines.empty)
+            return passages;
 
         if (lines.front.startsWith("#!"))
         {
