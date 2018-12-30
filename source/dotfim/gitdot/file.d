@@ -114,7 +114,9 @@ abstract class GitDotFile
         debug logDebug("GitDotFile:write %s %s",
                  T.stringof, this.file);
 
-        import std.algorithm : filter;
+        import std.algorithm : filter, each;
+        import std.file : mkdirRecurse, exists;
+        import std.path : dirName;
 
         string[] lines;
 
@@ -138,8 +140,11 @@ abstract class GitDotFile
             lines ~= PassageHandler.format!T(this.settings, passage, this.managed);
         }
 
+        auto path = dirName(this.file);
+        if (!path.exists)
+            path.mkdirRecurse;
+
         File f = File(this.file, "w");
-        import std.algorithm : each;
         lines.each!(line => f.writeln(line));
     }
 
