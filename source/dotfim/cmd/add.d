@@ -53,6 +53,10 @@ struct Add
 
         with(this.dfm) foreach (file; this.dotfiles)
         {
+            import std.file : isDir;
+            if (file.isDir)
+                continue;
+
             import std.algorithm : canFind;
 
             // Check if file is residing in either dotdir or gitdir
