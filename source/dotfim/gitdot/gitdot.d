@@ -25,12 +25,36 @@ class GitDot
     private string _relativeFile;
     @property string relfile() { return this._relativeFile; }
 
-
-    struct Settings
+    class Settings
     {
         static immutable string header = "This dotfile is managed by DotfiM";
         // info string about the mashine and user running dotfim
         static string localinfo;
+        private string _commentIndicator;
+        @property const(string) commentIndicator() const
+        { return this._commentIndicator; }
+        @property void commentIndicator(string newCI) {
+            import std.format : format;
+            enforce(this._commentIndicator.length == 0 || this._commentIndicator == newCI,
+                    "Contradicting comment indicators found (%s vs %s) in %s".format(
+                        this._commentIndicator, newCI, relfile));
+            this._commentIndicator = newCI;
+        }
+
+        static this()
+        {
+            try
+            {
+                import std.process : environment;
+                auto locinfo = environment["DOTFIM_LOCALINFO"];
+                localinfo = locinfo;
+            }
+            catch (Exception e)
+            {
+                import std.socket : Socket;
+                localinfo = Socket.hostName;
+            }
+        }
     }
     Settings settings;
 
@@ -44,23 +68,7 @@ class GitDot
     }
     @property void commentIndicator(string ci)
     {
-        this.git.commentIndicator = ci;
-        this.dot.commentIndicator = ci;
-    }
-
-    static this()
-    {
-        try
-        {
-            import std.process : environment;
-            auto locinfo = environment["DOTFIM_LOCALINFO"];
-            this.settings.localinfo = locinfo;
-        }
-        catch (Exception e)
-        {
-            import std.socket : Socket;
-            this.settings.localinfo = Socket.hostName;
-        }
+        this.settings.commentIndicator = ci;
     }
 
     this(string gitfile, string dotfile)
@@ -69,6 +77,9 @@ class GitDot
         import std.range : retro, array;
         import std.conv : to;
         import std.path : pathSplitter, buildPath;
+
+        this.settings = new Settings();
+
         this._relativeFile = commonPrefix(gitfile.pathSplitter.retro,
                                           dotfile.pathSplitter.retro).array
                                     .retro.buildPath
@@ -115,10 +126,10 @@ class GitDot
 
                 // Does the private passage already exist?
                 if (git.passages.canFind!(passage => passage ==
-                                GitDotFile.passageHandler.hash(dot.passages[0])))
+                                PassageHandler.hash(dot.passages[0])))
                     return false;
 
-                git.passages ~= [GitDotFile.passageHandler.hash(dot.passages[0])];
+                git.passages ~= [PassageHandler.hash(dot.passages[0])];
 
                 return true;
             }
@@ -165,7 +176,7 @@ class GitDot
                         gits.popFront;
 
                         if ((gitp.type == Private &&
-                                this.git.passageHandler.hash(dotp) == gitp))
+                                PassageHandler.hash(dotp) == gitp))
                             matrix ~= [dotp.nullable, gitp.nullable];
                         else if (gitp == dotp)
                             matrix ~= [dotp.nullable, gitp.nullable];
@@ -202,7 +213,7 @@ class GitDot
                     }
 
                     if (!row[0].isNull && row[0].type == Private)
-                        return GitDotFile.passageHandler.hash(row[0]).nullable;
+                        return PassageHandler.hash(row[0]).nullable;
                     else
                         return row[0];
                 }).filter!(n => !n.isNull).map!(n => n.get).array;
@@ -245,7 +256,7 @@ class GitDot
                     }
 
                     if ((gitp.type == Private &&
-                            this.git.passageHandler.hash(dotp) == gitp) ||
+                            PassageHandler.hash(dotp) == gitp) ||
                             gitp == dotp)
                     {
                         // TODO: is it fine popping from the iterated range?
@@ -291,7 +302,6 @@ class GitDot
             this.dot.passages = matrix.filter!(row => !row[0].isNull)
                                       .map!(row => row[0].get).array;
 
-            this.dot.commentIndicator = this.git.commentIndicator;
             this.dot.hash = this.git.hash;
             this.dot.managed = this.git.managed;
 
@@ -327,7 +337,7 @@ class GitDot
         gitdot.managed = true;
         with (Passage.Type) gitdot.git.passages = [
             Passage(Local, ["other1"], "othermashine"),
-            gitdot.git.passageHandler.hash(
+            PassageHandler.hash(
                 Passage(Private, ["priv1", "priv2"], gitdot.settings.localinfo)),
             Passage(Git, ["git1", "git2"]),
             Passage(Local, ["local1"], gitdot.settings.localinfo),

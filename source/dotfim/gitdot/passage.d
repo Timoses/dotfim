@@ -46,6 +46,19 @@ struct Passage
     }
 }
 
+class PassageHandlerException : Exception
+{
+    import std.conv : to;
+    this(int lineNumber, string msg) {
+        super("(line "~lineNumber.to!string~"): "~msg); }
+}
+class UnexpectedStatement : PassageHandlerException
+{
+    this(int lineNumber, string statement) {
+        super(lineNumber, "Unexpected statement: "~statement); }
+}
+
+
 /**
  * Passages:
  *  Header: <cI> GitDot.settings.header
@@ -58,33 +71,13 @@ struct Passage
  *      #dotfim <Type>
  *      <line>
  */
-class PassageHandler
+static class PassageHandler
 {
     enum string controlStatement = "dotfim";
     enum string blockBeginIndicator = "{";
     enum string blockEndIndicator = "}";
 
-    const(GitDot.Settings)* settings;
-    string commentIndicator;
-
-    class PassageHandlerException : Exception
-    {
-        import std.conv : to;
-        this(int lineNumber, string msg) {
-            super("(line "~lineNumber.to!string~"): "~msg); }
-    }
-    class UnexpectedStatement : PassageHandlerException
-    {
-        this(int lineNumber, string statement) {
-            super(lineNumber, "Unexpected statement: "~statement); }
-    }
-
-    this(const ref GitDot.Settings settings)
-    {
-        this.settings = &settings;
-    }
-
-    Passage[] read(T)(string[] lines, bool managed)
+    static Passage[] read(T)(const(GitDot.Settings) settings, string[] lines, bool managed)
     {
         import std.algorithm : find, findSplitAfter, canFind, startsWith;
         import std.range : front;
@@ -97,7 +90,7 @@ class PassageHandler
         {
             static if (is (T == Dotfile))
                 return [Passage(Passage.Type.Private, lines,
-                                this.settings.localinfo)];
+                                settings.localinfo)];
             else if (is (T == Gitfile))
                 return [Passage(Passage.Type.Git, lines)];
         }
@@ -114,7 +107,7 @@ class PassageHandler
             }
             // Git files currently only contain Git lines
             else if (line.split
-                        .startsWith([commentIndicator,
+                        .startsWith([settings.commentIndicator,
                                      controlStatement]))
             {
                 type = Passage.Type.Invalid;
@@ -156,7 +149,7 @@ class PassageHandler
                             }
                         }
                         else if (is (T == Dotfile))
-                            localinfo = this.settings.localinfo;
+                            localinfo = settings.localinfo;
 
 
                         if (statements.length > 1 + hasLocalStatement
@@ -199,12 +192,12 @@ class PassageHandler
         return passages;
     }
 
-    string[] format(T)(const Passage passage, bool managed)
+    static string[] format(T)(const(GitDot.Settings) settings, const Passage passage, bool managed)
     {
         import std.conv : to;
         import std.format : format;
 
-        auto control = "%s %s ".format(this.commentIndicator,
+        auto control = "%s %s ".format(settings.commentIndicator,
                               this.controlStatement);
 
         final switch (passage.type) with (Passage.Type)
@@ -217,7 +210,7 @@ class PassageHandler
                 return passage.lines.dup;
             case Local:
                 static if (is (T == Gitfile))
-                    if (!managed && passage.localinfo == this.settings.localinfo)
+                    if (!managed && passage.localinfo == settings.localinfo)
                         return [];
 
                 static if (is (T == Dotfile))
@@ -236,7 +229,7 @@ class PassageHandler
                 lines ~= [control] ~ passage.lines;
 
                 if (passage.lines.length > 1)
-                    lines ~= this.commentIndicator ~ " "
+                    lines ~= settings.commentIndicator ~ " "
                                 ~ this.controlStatement ~ " "
                                 ~ this.blockEndIndicator;
                 return lines;
@@ -254,7 +247,7 @@ class PassageHandler
                             "A private passage in Gitfile should only always "
                             ~ "contain a one-line SHA256 hash!");
 
-                    control ~= " " ~ this.settings.localinfo;
+                    control ~= " " ~ settings.localinfo;
 
                     return [control] ~ passage.lines;
                 }
@@ -267,7 +260,7 @@ class PassageHandler
                     lines ~= [control] ~ passage.lines;
 
                     if (passage.lines.length > 1)
-                        lines ~= this.commentIndicator ~ " "
+                        lines ~= settings.commentIndicator ~ " "
                                 ~ this.controlStatement ~ " "
                                 ~ this.blockEndIndicator;
 
@@ -279,7 +272,7 @@ class PassageHandler
         }
     }
 
-    Passage hash(Passage passage) const
+    static Passage hash(Passage passage)
     {
         import std.digest.sha :sha256Of;
         import std.array : join;
@@ -292,7 +285,7 @@ class PassageHandler
 
 version(unittest_all) unittest
 {
-    GitDot.Settings settings;
+    GitDot gd = new GitDot("", "");
 
     import std.format;
     import std.string;
@@ -306,15 +299,14 @@ local 2
 local 3
 # dotfim }
 Synd 2
-EOS".format(settings.header).splitLines;
+EOS".format(gd.settings.header).splitLines;
     Passage[] passages = [
         Passage(Passage.Type.Git, ["Sync 1"]),
-        Passage(Passage.Type.Local, ["local 1"], settings.localinfo),
-        Passage(Passage.Type.Local, ["local 2", "local 3"], settings.localinfo),
+        Passage(Passage.Type.Local, ["local 1"], gd.settings.localinfo),
+        Passage(Passage.Type.Local, ["local 2", "local 3"], gd.settings.localinfo),
         Passage(Passage.Type.Git, ["Synd 2"])];
-    auto ph = new PassageHandler(settings);
-    ph.commentIndicator = "#";
-    Passage[] readpassages = ph.read!Dotfile(lines, true);
+    gd.settings.commentIndicator = "#";
+    Passage[] readpassages = PassageHandler.read!Dotfile(gd.settings, lines, true);
 
     assert(readpassages == passages);
 }

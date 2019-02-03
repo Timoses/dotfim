@@ -10,7 +10,7 @@ import std.stdio;
 
 class Gitfile : GitDotFile
 {
-    this(ref GitDot.Settings settings, string file)
+    this(GitDot.Settings settings, string file)
     {
         super(settings, file);
     }
@@ -42,7 +42,7 @@ class Gitfile : GitDotFile
                     return false;
 
                 if (gitp.type == Private
-                        && gitp.lines != this.passageHandler.hash(dotp).lines)
+                        && gitp.lines != PassageHandler.hash(dotp).lines)
                     return false;
                 else if (gitp.type != Private && gitp.lines != dotp.lines)
                     return false;
@@ -64,7 +64,7 @@ class Gitfile : GitDotFile
                             Passage(Private, ["priv1", "priv2"],
                                     gitdot.settings.localinfo)];
             git.passages = [Passage(Git, ["git1", "git2"]),
-                            GitDotFile.passageHandler.hash(
+                            PassageHandler.hash(
                                 Passage(Private, ["priv1", "priv2"]
                                                , gitdot.settings.localinfo))];
         }

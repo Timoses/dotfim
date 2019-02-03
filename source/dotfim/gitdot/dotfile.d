@@ -6,7 +6,7 @@ import dotfim.gitdot.gitfile;
 
 class Dotfile : GitDotFile
 {
-    this(ref GitDot.Settings settings, string file)
+    this(GitDot.Settings settings, string file)
     {
         super(settings, file);
     }
