@@ -158,8 +158,7 @@ struct Sync
      */
     private void exec()
     {
-        import std.algorithm : canFind, each, map;
-        import std.algorithm : uniq;
+        import std.algorithm : canFind, each, map, uniq, filter;
         import std.array : join;
         import std.conv : to;
         import std.file : exists;
@@ -453,7 +452,7 @@ struct Sync
                 // to renew their hashes
                 if (gfUpdatees.length > 0 || divergees.length > 0)
                 {
-                    dfUpdate(gitdots);
+                    dfUpdate(gitdots.filter!(gd => gd.managed).array);
                 }
                 else
                     dfUpdate(dfUpdatees);
