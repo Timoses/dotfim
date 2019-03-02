@@ -117,6 +117,10 @@ struct Sync
                 writeln(" Done");
             }
         }
+        else if (remote.length == 0) // remote git branch does not exist
+        {
+            dfm.git.push(dfm.dotfimGitBranch);
+        }
     }
 
     /**
