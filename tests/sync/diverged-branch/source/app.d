@@ -34,12 +34,12 @@ void main()
     auto otherGit = new Git(othergitpath);
     auto afile = env.files.map!(relfile => buildPath(othergitpath, relfile))
                           .find!(file => file.exists).array[0];
-    afile.append("a new line");
+    afile.append("I need to survive!");
     otherGit.execute("add", afile);
     otherGit.execute("commit", "-m", "other commit");
     otherGit.execute("push", "origin", "dotfim");
 
-    gitdot.dot.passages ~= Passage(Passage.Type.Local, ["new local line"],
+    gitdot.dot.passages ~= Passage(Passage.Type.Local, ["I need to survive as well!"],
                                    gitdot.settings.localinfo);
     dfm.options.bNoRemote = true;
     Sync(dfm);
@@ -49,7 +49,7 @@ void main()
     Sync(dfm);
 
 
-    assert(gitdot.dot.file.readText.canFind("a new line"));
-    assert(gitdot.git.file.readText.canFind("new local line"));
+    assert(gitdot.dot.file.readText.canFind("I need to survive!"));
+    assert(gitdot.git.file.readText.canFind("I need to survive as well!"));
 }
 

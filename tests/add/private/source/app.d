@@ -30,13 +30,13 @@ void main()
 
     auto gitdot = dfm.findGitDot(".file3");
 
-    gitdot.git.file.append("Some new line");
+    gitdot.git.file.append("I need to live!");
     dfm.git.execute("add", gitdot.git.file);
     dfm.git.execute("commit", "-m", "remote commit");
     dfm.git.execute("push", "origin", "dotfim");
 
 
-    gitdot.dot.passages ~= Passage(Passage.Type.Local, ["my new local line"],
+    gitdot.dot.passages ~= Passage(Passage.Type.Local, ["I need to live, too!"],
                                     Socket.hostName);
 
     auto dotpBefore = gitdot.dot.passages;
@@ -48,12 +48,12 @@ void main()
 
     auto newPassage = dotpAfter.filter!(p => !dotpBefore.canFind(p)).array[0];
     assert(newPassage.type == Passage.Type.Git);
-    assert(newPassage.lines == ["Some new line"]);
+    assert(newPassage.lines == ["I need to live!"]);
 
     gitdot.git.load();
     assert(gitdot.git.passages
             .any!(p => p.type == Passage.Type.Local
-                           && p.lines == ["my new local line"]));
+                           && p.lines == ["I need to live, too!"]));
 }
 
 
