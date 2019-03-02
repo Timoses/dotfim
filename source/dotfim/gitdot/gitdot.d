@@ -297,7 +297,8 @@ class GitDot
 
                 // didn't find a matching dotp!
                 enforce(gitp.type != Private, "Incoming private passage "
-                        ~"from Gitfile which could not be matched! "
+                        ~"from Gitfile " ~ this.git.file ~ " which could "
+                        ~ "not be matched! "
                         ~ "Gitfiles should not introduce new private passages!");
                 matrix ~= [gitp.nullable, Nullable!Passage()];
             }

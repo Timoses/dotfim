@@ -279,7 +279,8 @@ static class PassageHandler
                 }
             case Shebang:
                 assert(settings.commentIndicator == "#",
-                        "Shebang is only valid for '#' comment indicator");
+                        "Shebang is only valid for '#' comment indicator not for "
+                        ~ "\"" ~ settings.commentIndicator ~ "\"!");
                 assert(passage.lines.length == 1,
                         "Shebang passage should only contain one line");
                 return ["#!" ~ passage.lines.front];

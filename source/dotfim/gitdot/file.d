@@ -73,6 +73,7 @@ abstract class GitDotFile
             enforce(false, "Failed to load file \"" ~ this.file ~ "\"! Error: "
                     ~ typeof(e).stringof ~ " - " ~ e.msg);
 
+        debug logTrace("GitDotFile:loadInternal - Managed: %s", this._managed);
         debug logTrace("GitDotFile:loadInternal - Loaded passages: \n%(\t%s\n%)",
                         this._passages);
     }
