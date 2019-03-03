@@ -16,7 +16,8 @@ configuration "debug" {
 }
 
 configuration "unittest" {
-    postBuildCommands "./unittest.d ./tests"
+    postBuildCommands "$PACKAGE_DIR/unittest.d $PACKAGE_DIR/tests" "docker build $PACKAGE_DIR"
+
     versions "unittest_all"
     dependency "vibe-core" version="~>1.4.5"
 }
