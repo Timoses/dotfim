@@ -13,6 +13,9 @@ import dotfim.dotfim;
 
 void main()
 {
+    import vibe.core.log;
+    setLogLevel(LogLevel.trace);
+
     string dir = buildPath(tempDir(), "dotfim", "unittest-sync-diverged-branches");
     writeln("Testing in " ~ dir);
 
@@ -32,8 +35,8 @@ void main()
             DotfileManager.dotfimGitBranch, env.repodir,
             othergitpath);
     auto otherGit = new Git(othergitpath);
-    auto afile = env.files.map!(relfile => buildPath(othergitpath, relfile))
-                          .find!(file => file.exists).array[0];
+
+    auto afile = buildPath(othergitpath, gitdot.relfile);
     afile.append("I need to survive!");
     otherGit.execute("add", afile);
     otherGit.execute("commit", "-m", "other commit");

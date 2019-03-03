@@ -12,6 +12,9 @@ import dotfim.gitdot.passage;
 // not present in the local dot file of this mashine
 void main()
 {
+    import vibe.core.log;
+    setLogLevel(LogLevel.trace);
+
     string dir = buildPath(tempDir(), "dotfim",
                             "unittest-gitdot-sync-lineFromAnotherMashine");
 
@@ -30,13 +33,6 @@ void main()
     dfm.git.execute("add", gitdot.git.file);
     dfm.git.execute("commit", "-m", "remote commit");
     dfm.git.execute("push", "origin", "dotfim");
-
-    Sync(dfm);
-
-    gitdot.dot.passages.filter!((ref passage)
-                                => passage.type == Passage.Type.Private).array[0]
-                       .lines[0] ~= "edited";
-    assert(gitdot.dot.passages!(Passage.Type.Private)[0].lines[0].endsWith("edited"));
 
     Sync(dfm);
 

@@ -28,7 +28,7 @@ void main()
     auto dotfile = buildPath(dfm.settings.dotdir, ".testshebang");
 
     File f = File(gitfile, "w");
-    f.write("#!/bin/bash\n# This dotfile is managed by DotfiM\n# some lines");
+    f.write("#!/bin/bash\n\n# some lines");
     f.flush();
 
     f = File(dotfile, "w");
