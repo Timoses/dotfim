@@ -3,9 +3,9 @@
 With DotfiM the environment you are used to is readily available anywhere.
 
 DotfiM manages your dotfiles Git repository and syncs it with your local dotfiles. Changes to dotfiles that are managed by DotfiM are automatically synced to your Git repository after running `dotfim sync`.
-Simply run `dotfim sync` on another mashine and the changes are synchronized.
+Simply run `dotfim sync` on another machine and the changes are synchronized.
 
-DotfiM allows local and private [passages](#passages) within dotfiles which are only stored in the git repository but are not synced to other mashines.
+DotfiM allows local and private [passages](#passages) within dotfiles which are only stored in the git repository but are not synced to other machines.
 
 You can also [Test DotfiM](#test-dotfim) to see if you like it.
 
@@ -20,6 +20,7 @@ You can also [Test DotfiM](#test-dotfim) to see if you like it.
         * [Build](#build-1)
 * [Usage](#usage)
     * [Passages](#passages)
+        * [Passage types](#passage-types)
     * [Test DotfiM](#test-dotfim)
 * [Commands](#commands)
 * [Insights](#insights)
@@ -38,6 +39,9 @@ You can either [build](#build) the binary yourself or use a [container image](#c
 ### Container image
 
 #### Using Docker
+
+**Using remote git repository with URL**
+
 ```
 alias dotfim='docker run -it --rm -v `pwd`:/dotfim/git -v `echo $HOME`:/dotfim/dot --env DOTFIM_LOCALINFO=`hostname` timoses/dotfim'
 ```
@@ -45,6 +49,8 @@ Initialize with:
 ```
 dotfim init --gitdir /dotfim/git/git --dotdir /dotfim/dot <remoteRepoURL>
 ```
+
+**Using remote git repository located on filesystem**
 
 If your Git repository resides on your file system, you also need to mount it into the container:
 ```
@@ -67,6 +73,7 @@ dotfim init --gitdir /dotfim/git/git --dotdir /dotfim/dot /dotfim/repo.git
 #### Build
 Download DotfiM [here](https://github.com/Timoses/dotfim/releases/latest) and build the binary:
 ```
+git clone https://github.com/Timoses/dotfim
 cd dotfim
 dub build --build=release
 ```
@@ -79,6 +86,8 @@ Get DotfiM started with
 dotfim init <gitRepo> <dir>
 cd <dir>
 ```
+
+where `<gitRepo>` is your repository containing your dotfiles (may be an empty repository as well).
 
 Add a dotfile to be managed by DotfiM
 
@@ -95,7 +104,7 @@ dotfim sync
 What's a [gitfile and dotfile](#gitfile-and-dotfile)?
 
 ### Passages
-Any line can be preceded by a **control line** which controls what passage the line belongs to.
+Within your dotfile any line can be preceded by a **control line** which controls what passage the line belongs to.
 Lines not preceded by a control line are treated as synchronized lines by default.
 
 Example:
@@ -103,7 +112,7 @@ Example:
 My synchronized line
 
 # dotfim local
-A local line, which will not be synchronized to other mashines
+A local line, which will not be synchronized to other machines
 
 # dotfim private {
 A private line
@@ -114,20 +123,21 @@ in the git repository
 
 The format is
 ```
-<comment_indicator> dotfim <passage>
+<comment_indicator> dotfim <passage_type>
 ```
 
 Multiple lines can be assigned a passage by using `{` and `}` as delimiters:
 ```
-<comment_indicator> dotfim <passage> {
+<comment_indicator> dotfim <passage_type> {
 example passage line 1
 example passage line 2
 <comment_comment> dotfim }
 ```
 
-The following passages exist:
-* `Local`: Local passages are stored in the gitfile and never synchronized to other mashines. The gitfile will additionally hold the current mashine's hostname.
-* `Private`: Private behave just like local passages, however their content is first SHA-256 hashed before it is stored in the gitfile. Note that no encryption takes place, that is, the original content from which the hash was generated is not retrievable. The hash merely serves as a comparsion method to keep the correct order of private passages within dotfiles.
+#### Passage types
+The following passage types exist:
+* `Local`: Local passages are stored in the gitfile and never synchronized to other machines. The gitfile will additionally hold the current machine's hostname.
+* `Private`: Private passages behave just like local passages, however their content is first SHA-256 hashed before it is stored in the gitfile. Note that no encryption/decryption takes place. The original content from which the hash was generated is not retrievable from the gitfile. The hash merely serves as a comparison method to keep the correct order of private passages within dotfiles during synchronization.
 
 ### Test DotfiM
 
@@ -195,7 +205,7 @@ Creates a playground test environment for experimentation under the path `<dir>`
 * `<dir>/dot/`: Simulated home folder
 * `<dir>/repo.git`: Simulated remote git repository
 
-Run `cd <dir> && dotfim init --gitdor git repo.git` to get started.
+Run `cd <dir> && dotfim init --gitdir git repo.git` to get started.
 
 
 ## Insights
