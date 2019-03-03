@@ -158,6 +158,7 @@ mixin template OptionsTemplate()
     struct Options
     {
         bool bNoRemote;
+        bool bPrintVersion;
 
         import std.getopt;
         GetoptResult result;
@@ -166,11 +167,15 @@ mixin template OptionsTemplate()
         {
             this.result = std.getopt.getopt(args,
                 std.getopt.config.stopOnFirstNonOption,
-                "no-remote", "Prevents any interaction with the remote repository (no push/pull)", &bNoRemote
+                "no-remote", "Prevents any interaction with the remote repository (no push/pull)", &bNoRemote,
+                "version", "Print version", &bPrintVersion
                 );
 
             if (this.helpWanted)
                 printHelp();
+            if (bPrintVersion)
+                writeln(import("VERSION"));
+
         }
 
         void printHelp()

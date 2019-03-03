@@ -21,3 +21,7 @@ configuration "unittest" {
     dependency "vibe-core" version="~>1.4.5"
 }
 
+stringImportPaths "import"
+
+preGenerateCommands "mkdir -p import && git describe --tags > import/VERSION"
+

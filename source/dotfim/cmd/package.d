@@ -77,6 +77,9 @@ EOS";
                 case "test":
                     Test(args[start..$]);
                     break;
+                case "version":
+                    writeln(import("VERSION"));
+                    break;
                 default:
                     import std.exception : enforce;
                     enforce(false, args[1] ~ " is not a valid command. "

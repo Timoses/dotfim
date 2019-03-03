@@ -5,6 +5,7 @@ COPY dub.sdl .
 COPY dub.selections.json .
 RUN dub upgrade
 COPY ./source/ ./source
+COPY ./.git .
 RUN dub build --build=release
 
 FROM frolvlad/alpine-glibc
