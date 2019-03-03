@@ -47,6 +47,10 @@ class Gitfile : GitDotFile
                 else if (gitp.type != Private && gitp.lines != dotp.lines)
                     return false;
             }
+
+            if (!gits.empty) // still remaining git passages
+                return false;
+
             return true;
         }
         else
