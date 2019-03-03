@@ -27,7 +27,7 @@ class DotfileManager
     GitDot[] gitdots;
 
     // paths or files relative to gitdir that should be excluded
-    string[] excludedDots = [".git", "cheatSheets"];
+    string[] excludedDots = [".git/", "cheatSheets"];
 
     this(string dir, Options options = Options())
     {
