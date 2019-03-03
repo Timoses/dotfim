@@ -48,7 +48,8 @@ struct Add
         writeln("--------DotfiM Add----------");
 
         import dotfim.gitdot;
-        GitDot[] createdGitDots;
+        bool bReloadDFM = false;
+        GitDot[] addedGitDots;
 
         with(this.dfm) foreach (file; this.dotfiles)
         {
@@ -113,19 +114,20 @@ struct Add
                 assert(!bGitExists); // shouldn't exist if gitdot wasn't found
                 gitdot = new GitDot(buildPath(settings.gitdir, relFile),
                                     buildPath(settings.dotdir, relFile));
-                createdGitDots ~= gitdot;
+                bReloadDFM = true;
             }
 
             gitdot.commentIndicator = commentIndicator;
             gitdot.git.managed = true;
             gitdot.git.write();
+            addedGitDots ~= gitdot;
         }
 
-        with (this.dfm) if (createdGitDots.length > 0)
+        with (this.dfm)
         {
             string addedFiles;
 
-            foreach (gitdot; createdGitDots)
+            foreach (gitdot; addedGitDots)
             {
                 git.execute("add", gitdot.git.file);
                 addedFiles ~= asRelativePath(gitdot.git.file,
@@ -133,9 +135,10 @@ struct Add
             }
 
             commitAndPush("DotfiM Add: \n\n" ~ addedFiles);
-
-            load();
         }
+
+        if (bReloadDFM)
+            this.dfm.load();
 
         // Sync dotfiles with new gitHash version
         // and add new dotfiles
