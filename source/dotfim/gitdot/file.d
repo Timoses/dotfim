@@ -102,7 +102,7 @@ abstract class GitDotFile
             if (this.classinfo.name == "dotfim.gitdot.dotfile.Dotfile")
             {
                 auto hashsplit = split[1].findSplitAfter(this.settings.header);
-                enforce(hashsplit[1].strip.length, "Missing hash in managed dotfile");
+                enforce(hashsplit[1].strip.length, "Missing hash in managed dotfile " ~ this.file);
                 this.hash = hashsplit[1].strip;
             }
 
