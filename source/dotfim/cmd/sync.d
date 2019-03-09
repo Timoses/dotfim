@@ -282,97 +282,93 @@ struct Sync
             // 2: Merge
             if (divergees.length > 0)
             {
-                // First: merge diverged dotfiles into dotfimBranch
-                if (divergees.length)
+                if (!askContinue("The following files have diverged:\n"
+                        ~ divergees.map!((e) => asRelativePath(
+                                e.git.file,
+                                settings.gitdir).to!string)
+                            .join("\n")
+                        ~ "\nWould you like to attempt merging? (y/n): ", "y"))
+                    // stop!
+                    throw new Exception("User aborted merge!");
+
+                // common base commit should be dotfile hash
+                // TODO: support multiple different dotfile hashes
+                //       (however that might happen) -> multiple merge
+                //       branches and merge commits
+                string commonBaseHash = divergees[0].dot.hash;
+                foreach (gitdot; divergees)
                 {
-                    if (!askContinue("The following files have diverged:\n"
-                            ~ divergees.map!((e) => asRelativePath(
-                                    e.git.file,
-                                    settings.gitdir).to!string)
-                                .join("\n")
-                            ~ "\nWould you like to attempt merging? (y/n): ", "y"))
-                        // stop!
-                        throw new Exception("User aborted merge!");
+                    enforce(gitdot.dot.hash == commonBaseHash,
+                            "Found differing git hashes in divergent "
+                            ~ "dotfiles. Currently only one merge base "
+                            ~ "base is supported! Aborting Merge.");
+                }
 
-                    // common base commit should be dotfile hash
-                    // TODO: support multiple different dotfile hashes
-                    //       (however that might happen) -> multiple merge
-                    //       branches and merge commits
-                    string commonBaseHash = divergees[0].dot.hash;
+                immutable string mergeBranchName = "merge-"
+                    ~ dotfimGitBranch;
+                scope(failure)
+                {
+                    git.execute(["checkout", dotfimGitBranch]);
+                    git.execute("branch", "-D", mergeBranchName);
+                }
+                // commit dotfiles to merge branch
+                git.execute(["checkout", "-b",
+                                    mergeBranchName,
+                                    commonBaseHash]);
+
+                // write dotfiles updates to gitfiles
+                foreach (gitdot; divergees)
+                {
+                    // Need to load the old git file as to
+                    // not commit changes from other machine's
+                    // local/private passages
+                    string relGitPath = asRelativePath(
+                            gitdot.git.file,
+                            settings.gitdir).to!string;
+                    auto oldgit = new Gitfile(gitdot.settings, gitdot.git.file);
+                    oldgit.load(git.execute("show",
+                                    gitdot.dot.hash ~ ":" ~ relGitPath).output
+                                    .splitLines());
+                    auto curgit = gitdot.git;
+                    scope(exit) gitdot.git = curgit;
+                    gitdot.git = oldgit;
+                    gitdot.syncTo!Gitfile();
+                    gitdot.git.write();
+                    git.execute("add", gitdot.git.file);
+                }
+                // commit these changes
+                git.execute(["commit", "-m", "Diverged commit"]);
+
+                // Try merging
+                if (git.merge(mergeBranchName, dotfimGitBranch)
+                    && askContinue("The merge appears successful.\n" ~
+                            "Would you like to take over the changes? (y/n): ",
+                            "y"))
+                {
+                    // take over merged branch
+                    git.execute("rebase", mergeBranchName, dotfimGitBranch);
+                    git.execute("branch", "-d", mergeBranchName);
+
+                    string mergedFiles;
+                    foreach (div; divergees)
+                    {
+                        mergedFiles ~= asRelativePath(div.git.file,
+                                        settings.gitdir).to!string
+                                    ~ "\n";
+                    }
+                    // update commit message (ammend)
+                    git.commit("Merged update\n\n" ~ mergedFiles,
+                                        true);
+
+                    curhash = git.hash;
+
+                    // read merged contents from gitfiles
                     foreach (gitdot; divergees)
-                    {
-                        enforce(gitdot.dot.hash == commonBaseHash,
-                                "Found differing git hashes in divergent "
-                                ~ "dotfiles. Currently only one merge base "
-                                ~ "base is supported! Aborting Merge.");
-                    }
-
-                    immutable string mergeBranchName = "merge-"
-                        ~ dotfimGitBranch;
-                    scope(failure)
-                    {
-                        git.execute(["checkout", dotfimGitBranch]);
-                        git.execute("branch", "-D", mergeBranchName);
-                    }
-                    // commit dotfiles to merge branch
-                    git.execute(["checkout", "-b",
-                                        mergeBranchName,
-                                        commonBaseHash]);
-
-                    // write dotfiles updates to gitfiles
-                    foreach (gitdot; divergees)
-                    {
-                        // Need to load the old git file as to
-                        // not commit changes from other machine's
-                        // local/private passages
-                        string relGitPath = asRelativePath(
-                                gitdot.git.file,
-                                settings.gitdir).to!string;
-                        auto oldgit = new Gitfile(gitdot.settings, gitdot.git.file);
-                        oldgit.load(git.execute("show",
-                                        gitdot.dot.hash ~ ":" ~ relGitPath).output
-                                        .splitLines());
-                        auto curgit = gitdot.git;
-                        scope(exit) gitdot.git = curgit;
-                        gitdot.git = oldgit;
-                        gitdot.syncTo!Gitfile();
-                        gitdot.git.write();
-                        git.execute("add", gitdot.git.file);
-                    }
-                    // commit these changes
-                    git.execute(["commit", "-m", "Diverged commit"]);
-
-                    // Try merging
-                    if (git.merge(mergeBranchName, dotfimGitBranch)
-                        && askContinue("The merge appears successful.\n" ~
-                                "Would you like to take over the changes? (y/n): ",
-                                "y"))
-                    {
-                        // take over merged branch
-                        git.execute("rebase", mergeBranchName, dotfimGitBranch);
-                        git.execute("branch", "-d", mergeBranchName);
-
-                        string mergedFiles;
-                        foreach (div; divergees)
-                        {
-                            mergedFiles ~= asRelativePath(div.git.file,
-                                            settings.gitdir).to!string
-                                        ~ "\n";
-                        }
-                        // update commit message (ammend)
-                        git.commit("Merged update\n\n" ~ mergedFiles,
-                                            true);
-
-                        curhash = git.hash;
-
-                        // read merged contents from gitfiles
-                        foreach (gitdot; divergees)
-                            gitdot.git.load();
-                    }
-                    else
-                    {
-                        throw new Exception("Merge failed... Aborted dotfim sync!");
-                    }
+                        gitdot.git.load();
+                }
+                else
+                {
+                    throw new Exception("Merge failed... Aborted dotfim sync!");
                 }
             }
 
