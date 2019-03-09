@@ -322,6 +322,19 @@ struct Sync
                     // write dotfiles updates to gitfiles
                     foreach (gitdot; divergees)
                     {
+                        // Need to load the old git file as to
+                        // not commit changes from other machine's
+                        // local/private passages
+                        string relGitPath = asRelativePath(
+                                gitdot.git.file,
+                                settings.gitdir).to!string;
+                        auto oldgit = new Gitfile(gitdot.settings, gitdot.git.file);
+                        oldgit.load(git.execute("show",
+                                        gitdot.dot.hash ~ ":" ~ relGitPath).output
+                                        .splitLines());
+                        auto curgit = gitdot.git;
+                        scope(exit) gitdot.git = curgit;
+                        gitdot.git = oldgit;
                         gitdot.syncTo!Gitfile();
                         gitdot.git.write();
                         git.execute("add", gitdot.git.file);

@@ -291,12 +291,13 @@ class GitDot
                         dotsPassed ~= dotp;
                 }
 
-                // didn't find a matching dotp!
-                enforce(gitp.type != Private, "Incoming private passage "
+                if (gitp.type != Private)
+                    matrix ~= [gitp.nullable, Nullable!Passage()];
+                else
+                    // didn't find a matching dotp!
+                    logDebug("Incoming private passage "
                         ~"from Gitfile " ~ this.git.file ~ " which could "
-                        ~ "not be matched! "
-                        ~ "Gitfiles should not introduce new private passages!");
-                matrix ~= [gitp.nullable, Nullable!Passage()];
+                        ~ "not be matched! Skipping!");
             }
             // add rest of dots
             foreach (dotp; dots)

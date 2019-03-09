@@ -56,7 +56,6 @@ abstract class GitDotFile
 
     void load(this T)(string[] lines)
     {
-        this._file = "";
         this._raw = lines;
         loadInternal!T();
     }
