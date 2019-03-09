@@ -387,7 +387,9 @@ struct Sync
                     {
                         changedFiles = changedFiles.chomp;
 
-                        commitAndPush("DotfiM Sync: \n\n" ~ changedFiles);
+                        commitAndPush("DotfiM Sync" ~
+                                    " (" ~ this.dfm.settings.localinfo ~ ")" ~
+                                    ": \n\n" ~ changedFiles);
                     }
                 }
                 catch (Exception e)

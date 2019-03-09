@@ -303,7 +303,8 @@ static class PassageHandler
 
 version(unittest_all) unittest
 {
-    GitDot gd = new GitDot("", "");
+    import dotfim.dotfim;
+    GitDot gd = new GitDot("", "", DotfileManager.Settings());
 
     import std.format;
     import std.string;

@@ -6,6 +6,7 @@ import std.file : exists;
 
 debug import vibe.core.log;
 
+import dotfim.dotfim;
 import dotfim.gitdot.file;
 import dotfim.gitdot.gitfile;
 import dotfim.gitdot.dotfile;
@@ -29,7 +30,7 @@ class GitDot
     {
         static immutable string header = "This dotfile is managed by DotfiM";
         // info string about the mashine and user running dotfim
-        static string localinfo;
+        string localinfo;
         private string _commentIndicator;
         @property const(string) commentIndicator() const
         { return this._commentIndicator; }
@@ -41,20 +42,11 @@ class GitDot
             this._commentIndicator = newCI;
         }
 
-        static this()
+        this(const string localinfo)
         {
-            try
-            {
-                import std.process : environment;
-                auto locinfo = environment["DOTFIM_LOCALINFO"];
-                localinfo = locinfo;
-            }
-            catch (Exception e)
-            {
-                import std.socket : Socket;
-                localinfo = Socket.hostName;
-            }
+            this.localinfo = localinfo;
         }
+
     }
     Settings settings;
 
@@ -71,14 +63,14 @@ class GitDot
         this.settings.commentIndicator = ci;
     }
 
-    this(string gitfile, string dotfile)
+    this(string gitfile, string dotfile, const DotfileManager.Settings dfmSettings)
     {
         import std.algorithm : commonPrefix;
         import std.range : retro, array;
         import std.conv : to;
         import std.path : pathSplitter, buildPath;
 
-        this.settings = new Settings();
+        this.settings = new Settings(dfmSettings.localinfo);
 
         this._relativeFile = commonPrefix(gitfile.pathSplitter.retro,
                                           dotfile.pathSplitter.retro).array
@@ -334,7 +326,7 @@ class GitDot
     }
     version(unittest_all) unittest
     {
-        auto gitdot = new GitDot("","");
+        auto gitdot = new GitDot("","", DotfileManager.Settings());
         gitdot.commentIndicator = "#";
         gitdot.managed = true;
         gitdot.git.passages = [
@@ -355,7 +347,7 @@ class GitDot
     }
     version(unittest_all) unittest
     {
-        auto gitdot = new GitDot("","");
+        auto gitdot = new GitDot("","", DotfileManager.Settings());
         gitdot.commentIndicator = "'";
         gitdot.managed = true;
         with (Passage.Type) gitdot.git.passages = [

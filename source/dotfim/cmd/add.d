@@ -118,7 +118,8 @@ struct Add
                 debug logTrace("Add: gitdot does not exist -> Creating");
                 assert(!bGitExists); // shouldn't exist if gitdot wasn't found
                 gitdot = new GitDot(buildPath(settings.gitdir, relFile),
-                                    buildPath(settings.dotdir, relFile));
+                                    buildPath(settings.dotdir, relFile),
+                                    this.dfm.settings);
                 bReloadDFM = true;
             }
 

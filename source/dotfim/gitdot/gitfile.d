@@ -59,7 +59,8 @@ class Gitfile : GitDotFile
 
     version(unittest_all) unittest
     {
-        auto gitdot = new GitDot("","");
+        import dotfim.dotfim;
+        auto gitdot = new GitDot("","", DotfileManager.Settings());
         auto git = gitdot.git;
         auto dot = gitdot.dot;
         with(Passage.Type)

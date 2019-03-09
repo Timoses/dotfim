@@ -90,7 +90,7 @@ class DotfileManager
                                     buildPath(this.settings.dotdir,
                                         gitfile.asRelativePath(this.settings.gitdir)
                                                .to!string);
-                            auto gitdot = new GitDot(gitfile, dotfile);
+                            auto gitdot = new GitDot(gitfile, dotfile, this.settings);
                             gitdot.git.hash = this._hash;
                             return gitdot;
                         }).array;
@@ -237,6 +237,23 @@ mixin template SettingsTemplate()
         @property string dotdir() { return this.internal.dotdir; }
         @property void dotdir(string newEntry) {
             this.internal.dotdir = newEntry; }
+
+        // info string about the mashine and user running dotfim
+        static string localinfo;
+
+        static this()
+        {
+            try
+            {
+                import std.process : environment;
+                localinfo = environment["DOTFIM_LOCALINFO"];
+            }
+            catch (Exception e)
+            {
+                import std.socket : Socket;
+                localinfo = Socket.hostName;
+            }
+        }
 
         this(this)
         {
