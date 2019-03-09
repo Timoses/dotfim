@@ -80,7 +80,7 @@ static class PassageHandler
 
     static Passage[] read(T)(const(GitDot.Settings) settings, string[] lines, bool managed)
     {
-        import std.algorithm : find, findSplitAfter, canFind, startsWith;
+        import std.algorithm : filter, find, findSplitAfter, canFind, startsWith;
         import std.range : front, popFront, empty;
         import std.string : splitLines, split, strip, stripLeft;
 
@@ -99,7 +99,8 @@ static class PassageHandler
         if (!managed)
         {
             static if (is (T == Dotfile))
-                return passages ~ Passage(Passage.Type.Private, lines,
+                return passages ~ Passage(Passage.Type.Private,
+                                lines.filter!(line => line.length).array,
                                 settings.localinfo);
             else if (is (T == Gitfile))
                 return passages ~ Passage(Passage.Type.Git, lines);
@@ -111,7 +112,7 @@ static class PassageHandler
 
         foreach (int i, line; lines)
         {
-            if (line.canFind(settings.header))
+            if (line.canFind(settings.header) || !line.length)
             {
                 continue;
             }
@@ -199,7 +200,7 @@ static class PassageHandler
 
         enforce(!inPassage, "Missing end of control block statement!");
 
-        return passages;
+        return passages.filter!(p => p.lines.length).array;
     }
 
     static string[] format(T)(const(GitDot.Settings) settings, const Passage passage, bool managed)
