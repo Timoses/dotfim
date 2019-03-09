@@ -125,6 +125,7 @@ abstract class GitDotFile
         {
             assert(shebangPassage.length == 1, "Only one Shebang passage allowed");
             lines ~= PassageHandler.format!T(this.settings, shebangPassage[0], this.managed);
+            lines ~= "";
         }
 
         if (this.managed)
@@ -132,12 +133,14 @@ abstract class GitDotFile
             lines ~= this.settings.commentIndicator ~ " " ~ this.settings.header;
             static if (is (T == Dotfile))
                 lines[$-1] ~= " " ~ this.hash;
+            lines ~= "";
         }
 
         foreach (passage; passages.filter!
                                     (p => p.type != Passage.Type.Shebang).array)
         {
             lines ~= PassageHandler.format!T(this.settings, passage, this.managed);
+            lines ~= "";
         }
 
         auto path = dirName(this.file);

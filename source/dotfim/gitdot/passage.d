@@ -80,7 +80,8 @@ static class PassageHandler
 
     static Passage[] read(T)(const(GitDot.Settings) settings, string[] lines, bool managed)
     {
-        import std.algorithm : filter, find, findSplitAfter, canFind, startsWith;
+        import std.algorithm : filter, find, findSplitAfter, canFind, startsWith,
+                               map, group;
         import std.range : front, popFront, empty;
         import std.string : splitLines, split, strip, stripLeft;
 
@@ -89,6 +90,10 @@ static class PassageHandler
 
         if (lines.empty)
             return passages;
+
+        // Remove duplicate empty lines
+        lines = lines.group!((l1,l2) => l1 == l2 && l1 == "")
+                     .map!(g => g[0]).array;
 
         if (lines.front.startsWith("#!"))
         {
@@ -99,108 +104,121 @@ static class PassageHandler
         if (!managed)
         {
             static if (is (T == Dotfile))
-                return passages ~ Passage(Passage.Type.Private,
-                                lines.filter!(line => line.length).array,
-                                settings.localinfo);
+                passages ~= Passage(Passage.Type.Private, lines, settings.localinfo);
             else if (is (T == Gitfile))
-                return passages ~ Passage(Passage.Type.Git, lines);
+                passages ~= Passage(Passage.Type.Git, lines);
         }
-
-        // true if previous line indicates a passage span (# { ... # })
-        bool inPassage = false;
-        string localinfo;
-
-        foreach (int i, line; lines)
+        else
         {
-            if (line.canFind(settings.header) || !line.length)
-            {
-                continue;
-            }
-            // Git files currently only contain Git lines
-            else if (line.split
-                        .startsWith([settings.commentIndicator,
-                                     controlStatement]))
-            {
-                type = Passage.Type.Invalid;
+            // true if previous line indicates a passage span (# { ... # })
+            bool inPassage = false;
+            string localinfo;
 
-                auto control = line.findSplitAfter(controlStatement);
-
-                if (control[0].length > 0)
+            foreach (int i, line; lines)
+            {
+                if (line.canFind(settings.header))
                 {
-                    import std.string : split;
-                    string[] statements = control[1].split;
-                    if (statements[0] == blockEndIndicator)
-                    {
-                        enforce(inPassage, new UnexpectedStatement(i+1,
-                                    blockEndIndicator));
-                        inPassage = false;
-                        continue;
-                    }
-                    else
-                    {
-                        enforce(!inPassage, new PassageHandlerException(i+1,
-                                    "Cannot have a dotfim control statement "
-                                    ~ "within a dotfim control block"));
-                        import std.conv : parse, to;
-                        import std.uni : asCapitalized;
-                        string typestring = statements[0].asCapitalized.to!string;
-                        type = typestring.parse!(Passage.Type);
+                    continue;
+                }
+                // Git files currently only contain Git lines
+                else if (line.split
+                            .startsWith([settings.commentIndicator,
+                                         controlStatement]))
+                {
+                    type = Passage.Type.Invalid;
 
-                        bool hasLocalStatement = false;
-                        static if (is (T == Gitfile))
+                    auto control = line.findSplitAfter(controlStatement);
+
+                    if (control[0].length > 0)
+                    {
+                        import std.string : split;
+                        string[] statements = control[1].split;
+                        if (statements[0] == blockEndIndicator)
                         {
-                            if (type == Passage.Type.Local
-                                   || type == Passage.Type.Private)
+                            enforce(inPassage, new UnexpectedStatement(i+1,
+                                        blockEndIndicator));
+                            inPassage = false;
+                            continue;
+                        }
+                        else
+                        {
+                            enforce(!inPassage, new PassageHandlerException(i+1,
+                                        "Cannot have a dotfim control statement "
+                                        ~ "within a dotfim control block"));
+                            import std.conv : parse, to;
+                            import std.uni : asCapitalized;
+                            string typestring = statements[0].asCapitalized.to!string;
+                            type = typestring.parse!(Passage.Type);
+
+                            bool hasLocalStatement = false;
+                            static if (is (T == Gitfile))
                             {
-                                assert(statements.length > 1,
-                                        "Required localinfo is missing "
-                                        ~"for type " ~ type.to!string);
-                                localinfo = statements[1];
-                                hasLocalStatement = true;
+                                if (type == Passage.Type.Local
+                                       || type == Passage.Type.Private)
+                                {
+                                    assert(statements.length > 1,
+                                            "Required localinfo is missing "
+                                            ~"for type " ~ type.to!string);
+                                    localinfo = statements[1];
+                                    hasLocalStatement = true;
+                                }
                             }
-                        }
-                        else if (is (T == Dotfile))
-                            localinfo = settings.localinfo;
+                            else if (is (T == Dotfile))
+                                localinfo = settings.localinfo;
 
 
-                        if (statements.length > 1 + hasLocalStatement
-                                && statements[1 + hasLocalStatement]
-                                    == blockBeginIndicator)
-                        {
-                            inPassage = true;
-                            passages ~= Passage(type, [],
-                                                (type == Passage.Type.Local ||
-                                                 type == Passage.Type.Private)
-                                                ? localinfo : "");
+                            if (statements.length > 1 + hasLocalStatement
+                                    && statements[1 + hasLocalStatement]
+                                        == blockBeginIndicator)
+                            {
+                                inPassage = true;
+                                passages ~= Passage(type, [],
+                                                    (type == Passage.Type.Local ||
+                                                     type == Passage.Type.Private)
+                                                    ? localinfo : "");
+                            }
+                            continue;
                         }
-                        continue;
                     }
                 }
+                else if (inPassage)
+                {
+                    passages[$-1].lines ~= line;
+                }
+                else if (type == Passage.Type.Invalid)
+                {
+                    type = Passage.Type.Git;
+                    passages ~= Passage(type, [line]);
+                }
+                else if (type == Passage.Type.Git)
+                {
+                    assert(passages[$-1].type == type);
+                    passages[$-1].lines ~= line;
+                }
+                else
+                {
+                    passages ~= Passage(type, [line], localinfo);
+                    type = Passage.Type.Invalid;
+                }
             }
-            else if (inPassage)
-            {
-                passages[$-1].lines ~= line;
-            }
-            else if (type == Passage.Type.Invalid)
-            {
-                type = Passage.Type.Git;
-                passages ~= Passage(type, [line]);
-            }
-            else if (type == Passage.Type.Git)
-            {
-                assert(passages[$-1].type == type);
-                passages[$-1].lines ~= line;
-            }
-            else
-            {
-                passages ~= Passage(type, [line], localinfo);
-                type = Passage.Type.Invalid;
-            }
+
+            enforce(!inPassage, "Missing end of control block statement!");
         }
 
-        enforce(!inPassage, "Missing end of control block statement!");
-
-        return passages.filter!(p => p.lines.length).array;
+        return passages.map!((ref p) {
+                     import std.algorithm : stripLeft, stripRight;
+                     // remove duplicate consecutive empty lines
+                     p.lines = p.lines
+                                .group!((l1,l2) => l1 == l2 && l1 == "")
+                                .map!(g => g[0])
+                                .array.stripLeft("").stripRight("");
+                     return p;
+                })
+                  // remove passages with no lines or only an empty line
+                  .filter!(p => p.lines.length &&
+                                 !(p.lines.length == 1 &&
+                                   p.lines[0] == ""))
+                  .array;
     }
 
     static string[] format(T)(const(GitDot.Settings) settings, const Passage passage, bool managed)
