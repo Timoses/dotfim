@@ -50,6 +50,11 @@ class DotfileManager
         assert(this.settings.isInitialized);
 
         this.git = new Git(this.settings.gitdir);
+
+        enforce(this.git.execute!(Git.ErrorMode.Ignore)
+                    (["diff-index", "--quiet", "HEAD", "--"]).status == 0,
+                "There are uncommited changes in your git directory ("
+                  ~ this.settings.gitdir ~ ")!");
         this.git.setBranch(dotfimGitBranch);
 
         load();
