@@ -27,7 +27,10 @@ class DotfileManager
     GitDot[] gitdots;
 
     // paths or files relative to gitdir that should be excluded
-    string[] excludedDots = [".git/", "cheatSheets"];
+    // from load(). Both start and end of a relative file path
+    // are matched (e.g. '.git/test.d' or 'test.orig')
+    // '*.orig' files occur when merging and are accidentally loaded afterwars
+    string[] excludedDots = [".git/", "cheatSheets", ".orig"];
 
     this(string dir, Options options = Options())
     {
@@ -73,7 +76,7 @@ class DotfileManager
 
         this.gitdots.length = 0;
 
-        import std.algorithm : filter, any, startsWith, map;
+        import std.algorithm : filter, any, startsWith, endsWith, map;
         import std.exception : ifThrown;
         import std.file;
         import std.path : buildPath;
@@ -81,8 +84,11 @@ class DotfileManager
         this.gitdots = this.settings.gitdir.dirEntries(SpanMode.breadth)
                         .filter!(file =>
                             !excludedDots
-                                .any!(ex => file.asRelativePath(this.settings.gitdir)
-                                                .startsWith(ex))
+                                .any!(ex =>
+                                    [file.asRelativePath(this.settings.gitdir)
+                                         .to!string]
+                                        .map!(relf => relf.startsWith(ex) ||
+                                                      relf.endsWith(ex)).front)
                             && file != this.settings.settingsFile
                             && file.isFile)
                         .map!((gitfile) {
