@@ -293,7 +293,7 @@ class GitDot
 
                 if (gitp.type != Private)
                     matrix ~= [gitp.nullable, Nullable!Passage()];
-                else
+                else debug
                     // didn't find a matching dotp!
                     logDebug("Incoming private passage "
                         ~"from Gitfile " ~ this.git.file ~ " which could "
