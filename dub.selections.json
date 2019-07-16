@@ -1,12 +1,12 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"eventcore": "0.8.39",
-		"libasync": "0.8.3",
+		"eventcore": "0.8.43",
+		"libasync": "0.8.4",
 		"memutils": "0.4.13",
-		"stdx-allocator": "2.77.4",
-		"taggedalgebraic": "0.10.12",
-		"vibe-core": "1.4.5",
-		"vibe-d": "0.8.4"
+		"stdx-allocator": "2.77.5",
+		"taggedalgebraic": "0.11.4",
+		"vibe-core": "1.6.2",
+		"vibe-d": "0.8.6-beta.1"
 	}
 }
