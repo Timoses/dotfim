@@ -1,5 +1,6 @@
 module dotfim.gitdot.passage;
 
+import std.array : array;
 import std.exception : enforce;
 
 import dotfim.gitdot;

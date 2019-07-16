@@ -78,6 +78,7 @@ EOS";
                     Test(args[start..$]);
                     break;
                 case "version":
+                    import std.stdio : writeln;
                     writeln(import("VERSION"));
                     break;
                 default:
