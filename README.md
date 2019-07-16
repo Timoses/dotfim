@@ -78,6 +78,11 @@ cd dotfim
 dub build --build=release
 ```
 
+Or to build in debug mode:
+```
+dub build --config=debug
+```
+
 ## Usage
 
 Get DotfiM started with
