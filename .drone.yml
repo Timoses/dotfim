@@ -1,0 +1,27 @@
+---
+kind: pipeline
+type: docker
+name: Dotfim
+
+steps:
+
+- name: git_tags
+  image: alpine/git
+  commands:
+  - git fetch --tags
+
+- name: run_tests
+  image: dlang2/dmd-ubuntu
+  commands:
+  - apt update && apt install -y git
+  - git config --global user.email "test@test.test"
+  - git config --global user.name "Test Tester"
+  - dub test
+  depends_on: [ git_tags ]
+
+- name: build_dockerfile
+  image: plugins/docker
+  settings:
+    dry_run: true
+    repo: timoses/dotfim
+  depends_on: [ git_tags ]
