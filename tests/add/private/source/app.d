@@ -1,8 +1,10 @@
 import std.stdio;
 
+import std.array : array;
 import std.file;
 import std.socket;
 import std.algorithm;
+import std.path : buildPath;
 
 
 import dotfim.gitdot.passage;

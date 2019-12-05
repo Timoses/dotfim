@@ -2,6 +2,7 @@ import std.stdio;
 
 import std.file;
 import std.algorithm;
+import std.path : buildPath;
 
 
 import dotfim.cmd;
