@@ -1,5 +1,6 @@
 module dotfim.gitdot.file;
 
+import std.conv : octal;
 import std.exception : enforce;
 import std.range : array;
 
@@ -28,6 +29,11 @@ abstract class GitDotFile
     private string _file;
     @property const(string) file() { return this._file; }
 
+    // File mode/permissions
+    private uint _mode = octal!100644;
+    @property uint mode() { return this._mode; }
+    @property void mode(uint m) { this._mode = m; }
+
     // git hash of git- or dotfile
     string hash;
 
@@ -45,23 +51,21 @@ abstract class GitDotFile
         this._file = file;
     }
 
+    // We only care about user executable rights as only those
+    // are tracked by git
+    bool isExecutable()
+    {
+        return (this.mode & octal!100) > 0;
+    }
+
     // Load file contents into passages, eventually adjust/confirm settings
     void load(this T)()
     {
-        import std.file : readText;
+        import std.file : getAttributes, readText;
         import std.string : splitLines;
         this._raw = this.file.readText.splitLines;
-        loadInternal!T();
-    }
+        this._mode = this.file.getAttributes();
 
-    void load(this T)(string[] lines)
-    {
-        this._raw = lines;
-        loadInternal!T();
-    }
-
-    private void loadInternal(this T)()
-    {
         this._passages.length = 0;
         this.managed = false;
 
@@ -72,9 +76,10 @@ abstract class GitDotFile
             enforce(false, "Failed to load file \"" ~ this.file ~ "\"! Error: "
                     ~ typeof(e).stringof ~ " - " ~ e.msg);
 
-        debug logTrace("GitDotFile:loadInternal - Managed: %s", this._managed);
-        debug logTrace("GitDotFile:loadInternal - Loaded passages: \n%(\t%s\n%)",
-                        this._passages);
+        debug logTrace("GitDotFile:load - Loaded: %s", this.file);
+        debug logTrace("GitDotFile:load - Managed: %s", this._managed);
+        debug logTrace("GitDotFile:load - Loaded passages: \n%(\t%s\n%)", this._passages);
+        debug logTrace("GitDotFile:load - Mode: %o", this._mode);
     }
 
     private bool retrieveHeaderInfo()
@@ -115,7 +120,7 @@ abstract class GitDotFile
                  T.stringof, this.file);
 
         import std.algorithm : filter, each;
-        import std.file : mkdirRecurse, exists;
+        import std.file : mkdirRecurse, exists, setAttributes;
         import std.path : dirName;
 
         string[] lines;
@@ -149,6 +154,8 @@ abstract class GitDotFile
 
         File f = File(this.file, "w");
         lines.each!(line => f.writeln(line));
+
+        this.file.setAttributes(this.mode);
 
         static if (is (T == Dotfile))
         {

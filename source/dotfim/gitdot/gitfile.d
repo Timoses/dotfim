@@ -23,6 +23,9 @@ class Gitfile : GitDotFile
         import std.algorithm : each, filter;
         if (auto dot = obj.to!Dotfile)
         {
+            if (this.isExecutable() != dot.isExecutable())
+                return false;
+
             // only compare relevant passages (not from other mashines)
             auto gits = this.passages.filter!(passage
                                 => (passage.type != Passage.Type.Private &&

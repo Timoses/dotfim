@@ -169,7 +169,7 @@ struct Sync
         import std.format : format;
         import std.path : asRelativePath;
         import std.range : array, drop;
-        import std.string : join, splitLines, chomp;
+        import std.string : join, splitLines, chomp, split;
 
         import dotfim.gitdot;
         import dotfim.util : askContinue;
@@ -238,22 +238,15 @@ struct Sync
                         dfUpdatees ~= gitdot;
 
                         // get content of old git file
-                        string relGitPath = asRelativePath(
-                                gitdot.git.file,
-                                settings.gitdir).to!string;
-                        auto oldgit = new Gitfile(gitdot.settings, gitdot.git.file);
-                        oldgit.load(
-                        //string[] oldGitLines =
-                            git.execute("show",
-                                dothash ~ ":" ~ relGitPath).output
-                                .splitLines());
-                         //       .drop(1); // drop header line
+                        scope(exit) git.execute("checkout", dotfimGitBranch);
+                        git.execute("checkout", dothash);
 
-                        // and check for custom updates
-//                        if (oldGitLines != gitdot.dot.gitLines)
+                        auto oldgit = new Gitfile(gitdot.settings, gitdot.git.file);
+                        oldgit.load();
+
                         if (oldgit != gitdot.dot)
                         {
-                            debug logTrace("Sync.1: Dot content differs as well!");
+                            debug logTrace("Sync.1: Dot content or file mode differs as well!");
                             divergees = uniq(divergees ~ gitdot).array;
                         }
                     }
@@ -326,13 +319,8 @@ struct Sync
                     // Need to load the old git file as to
                     // not commit changes from other machine's
                     // local/private passages
-                    string relGitPath = asRelativePath(
-                            gitdot.git.file,
-                            settings.gitdir).to!string;
                     auto oldgit = new Gitfile(gitdot.settings, gitdot.git.file);
-                    oldgit.load(git.execute("show",
-                                    gitdot.dot.hash ~ ":" ~ relGitPath).output
-                                    .splitLines());
+                    oldgit.load();
                     auto curgit = gitdot.git;
                     scope(exit) gitdot.git = curgit;
                     gitdot.git = oldgit;
