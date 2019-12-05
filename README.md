@@ -65,10 +65,8 @@ dotfim init --gitdir /dotfim/git/git --dotdir /dotfim/dot /dotfim/repo.git
 
 ### Build
 #### Requirements
-- D compiler (https://dlang.org/download.html) (latest built with v2.081.2)
+- D compiler (https://dlang.org/download.html) (latest built with v2.088.1)
 - DUB "Package and build management system for D" (http://code.dlang.org/download)
-
-*Tip: Use [D Version Manager](https://github.com/jacob-carlborg/dvm) to install both*
 
 #### Build
 Download DotfiM [here](https://github.com/Timoses/dotfim/releases/latest) and build the binary:
