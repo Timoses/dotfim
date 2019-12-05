@@ -149,6 +149,15 @@ abstract class GitDotFile
 
         File f = File(this.file, "w");
         lines.each!(line => f.writeln(line));
+
+        static if (is (T == Dotfile))
+        {
+            if (lines.length == 1 && lines[0] == "")
+            {
+                import std.file : remove;
+                this.file.remove;
+            }
+        }
     }
 
     // baggage
