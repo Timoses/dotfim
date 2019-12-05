@@ -51,12 +51,12 @@ struct Passage
 class PassageHandlerException : Exception
 {
     import std.conv : to;
-    this(int lineNumber, string msg) {
+    this(size_t lineNumber, string msg) {
         super("(line "~lineNumber.to!string~"): "~msg); }
 }
 class UnexpectedStatement : PassageHandlerException
 {
-    this(int lineNumber, string statement) {
+    this(size_t lineNumber, string statement) {
         super(lineNumber, "Unexpected statement: "~statement); }
 }
 
@@ -115,7 +115,7 @@ static class PassageHandler
             bool inPassage = false;
             string localinfo;
 
-            foreach (int i, line; lines)
+            foreach (size_t i, line; lines)
             {
                 if (line.canFind(settings.header))
                 {
