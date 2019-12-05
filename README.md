@@ -47,7 +47,7 @@ alias dotfim='docker run -it --rm -v `pwd`:/dotfim/git -v `echo $HOME`:/dotfim/d
 ```
 Initialize with:
 ```
-dotfim init --gitdir /dotfim/git/git --dotdir /dotfim/dot <remoteRepoURL>
+dotfim init --dotdir /dotfim/dot <remoteRepoURL>
 ```
 
 **Using remote git repository located on filesystem**
@@ -58,7 +58,7 @@ alias dotfim='docker run -it --rm -v `pwd`:/dotfim/git -v `echo $HOME`:/dotfim/d
 ```
 Initialize with:
 ```
-dotfim init --gitdir /dotfim/git/git --dotdir /dotfim/dot /dotfim/repo.git
+dotfim init --dotdir /dotfim/dot /dotfim/repo.git git
 ```
 
 
