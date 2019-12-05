@@ -82,6 +82,7 @@ class DotfileManager
         this.gitdots.length = 0;
 
         import std.algorithm : filter, any, startsWith, endsWith, map;
+        import std.conv : to;
         import std.exception : ifThrown;
         import std.file;
         import std.path : buildPath;
