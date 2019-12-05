@@ -38,7 +38,9 @@ void main()
 
     dfm.load();
 
-    Add(dfm, gitfile);
+    auto add = Add(dfm, gitfile);
+    add.commentIndicator = "#";
+    add.exec();
     // ERRORS OUT "Shebang is only valid for '#' comment indicator"
 }
 

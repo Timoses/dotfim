@@ -28,7 +28,9 @@ void main()
 
     Sync(dfm);
 
-    Add(dfm, buildPath(env.dotdir, ".file3"));
+    auto add = Add(dfm, buildPath(env.dotdir, ".file3"));
+    add.commentIndicator = "#";
+    add.exec();
 
     auto gitdot = dfm.findGitDot(".file3");
 
@@ -43,7 +45,18 @@ void main()
 
     auto dotpBefore = gitdot.dot.passages;
 
-    Sync(dfm);
+    bool resolveMergeConflict()
+    {
+        gitdot.git.load();
+        gitdot.git.passages.each!((ref passage) {
+                                    passage.lines = passage.lines.filter!(l => ! ["<<<<<<< HEAD", "=======", ">>>>>>> dotfim"].any!(g => l == g)).array;
+                                });
+        gitdot.git.write();
+        dfm.git.execute(["add", gitdot.git.file]);
+        return true;
+    }
+    dfm.git.mergeConflictHandler = &resolveMergeConflict;
+    Sync(dfm, true);
 
     gitdot.dot.load();
     auto dotpAfter = gitdot.dot.passages;

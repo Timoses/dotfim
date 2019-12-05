@@ -26,12 +26,14 @@ void main()
 
     auto dotfilePath = buildPath(env.dotdir, ".shebang");
     std.file.write(dotfilePath, "#!/bin/bash\ntestScript");
-    Add(dfm, dotfilePath);
+    auto add = Add(dfm, dotfilePath);
+    add.commentIndicator = "#";
+    add.exec();
 
     auto gitdot = dfm.findGitDot(dotfilePath);
 
     assert(dotfilePath.readText().startsWith("#!/bin/bash"));
-    assert(gitdot.git.file.readText.startsWith("#!/bin/bash"));
+    assert(gitdot.git.file.readText().startsWith("#!/bin/bash"));
 }
 
 

@@ -17,6 +17,10 @@ struct Add
     // dotfiles to be added
     string[] dotfiles;
 
+    debug {
+        string commentIndicator;
+    }
+
     this(lazy DotfileManager dfm, const string arg)
     { this(dfm, ["add", arg]); }
     this(lazy DotfileManager dfm, const string[] args = null)
@@ -30,14 +34,12 @@ struct Add
                 .to!string).array;
 
         this.dfm = dfm;
-
-        exec();
     }
 
     // Adds dotfiles to git repo and starts managing these files
     // The gitfile should not be managed
     // If the dotfile does not exist create it
-    private void exec()
+    void exec()
     {
         debug logDebug("Add:exec %s", this.dotfiles);
 
@@ -106,12 +108,24 @@ struct Add
 
             assert(relFile != "");
 
-            write("Please specify the comment indicator for file ",
-                    relFile,
-                    ": ");
-            stdout.flush;
-            import std.string : chomp;
-            string commentIndicator = readln().chomp();
+            string commentIndicator;
+
+            debug {
+                if (this.commentIndicator.length)
+                {
+                    commentIndicator = this.commentIndicator;
+                }
+            }
+
+            if (commentIndicator.length == 0)
+            {
+                write("Please specify the comment indicator for file ",
+                        relFile,
+                        ": ");
+                stdout.flush;
+                import std.string : chomp;
+                commentIndicator = readln().chomp();
+            }
 
             if (!gitdot)
             {

@@ -11,6 +11,8 @@ class Git
     // operating directory
     string dir;
 
+    bool delegate() mergeConflictHandler;
+
     this(string gitDir)
     {
         import std.path : buildPath;
@@ -164,19 +166,37 @@ class Git
         if (res.status > 0)
         { // git conflict
             writeln("| Git merge seems to have been unsuccessful.");
-            writeln("| Attempting git merge tool");
-            writeln("/-- Git Merge Tool ----\\");
-            import std.process : spawnProcess, wait;
-            auto pid = spawnProcess(["git", "-C", this.dir, "mergetool"]);
+            bool mergeSuccess = false;
+            if (!this.mergeConflictHandler)
+            {
+                writeln("| Attempting git merge tool");
+                writeln("/-- Git Merge Tool ----\\");
+                import std.process : spawnProcess, wait;
+                auto pid = spawnProcess(["git", "-C", this.dir, "mergetool"]);
 
-            scope(exit) {
-                writeln();
-                writeln("\\----------------------/");
-                writeln();
+                scope(exit) {
+                    writeln();
+                    writeln("\\----------------------/");
+                    writeln();
+                }
+
+                // git merge tool successful?
+                if (wait(pid) == 0)
+                {
+                    mergeSuccess = true;
+                }
+                else
+                {
+                    mergeSuccess = false;
+                }
+            }
+            else
+            {
+                mergeSuccess = this.mergeConflictHandler();
             }
 
             // git merge tool successful?
-            if (wait(pid) == 0)
+            if (mergeSuccess)
             {
                 // commit git merge would auto commit,
                 // need to commit ourselves after git merge tool

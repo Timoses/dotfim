@@ -24,8 +24,12 @@ import std.stdio;
 struct Sync
 {
     DotfileManager dfm;
-    this(lazy DotfileManager dfm)
+
+    bool autoyes;
+
+    this(lazy DotfileManager dfm, bool autoyes = false)
     {
+        this.autoyes = autoyes;
         this.dfm = dfm;
 
         updateGit();
@@ -282,7 +286,7 @@ struct Sync
             // 2: Merge
             if (divergees.length > 0)
             {
-                if (!askContinue("The following files have diverged:\n"
+                if (!autoyes && !askContinue("The following files have diverged:\n"
                         ~ divergees.map!((e) => asRelativePath(
                                 e.git.file,
                                 settings.gitdir).to!string)
@@ -341,9 +345,9 @@ struct Sync
 
                 // Try merging
                 if (git.merge(mergeBranchName, dotfimGitBranch)
-                    && askContinue("The merge appears successful.\n" ~
+                    && (this.autoyes || askContinue("The merge appears successful.\n" ~
                             "Would you like to take over the changes? (y/n): ",
-                            "y"))
+                            "y")))
                 {
                     // take over merged branch
                     git.execute("rebase", mergeBranchName, dotfimGitBranch);
@@ -498,7 +502,9 @@ version(unittest_all) unittest
         oldGitHash = dfm.git.hash;
         assert(dfm.gitdots.length == 2);
         // Need to use '#' for commentIndicator!
-        Add(dfm, testfile);
+        auto add = Add(dfm, testfile);
+        add.commentIndicator = "#";
+        add.exec();
         mixin(checkHash);
         auto gitdot = dfm.findGitDot(testfile);
         assert(gitdot);

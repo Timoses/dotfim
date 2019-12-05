@@ -55,7 +55,7 @@ EOS";
             {
                 case "add":
                     Add(CreateInstance(options),
-                            args[start..$]);
+                            args[start..$]).exec();
                     break;
                 case "list":
                 case "ls":

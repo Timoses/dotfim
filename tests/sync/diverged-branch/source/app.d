@@ -1,5 +1,6 @@
 import std.stdio;
 
+import std.array : array;
 import std.file;
 import std.socket;
 import std.algorithm;
@@ -50,6 +51,21 @@ void main()
     dfm.options.bNoRemote = false;
     // somehow the merge tool file is otherwise included!
     dfm.excludedDots ~= gitdot.relfile ~ ".orig";
+
+    bool resolveMergeConflict()
+    {
+        gitdot.git.load();
+        foreach (ref passage; gitdot.git.passages)
+        {
+            passage.lines = passage.lines.filter!
+                                (l => ! ["<<<<<<< HEAD", "=======", ">>>>>>> origin/dotfim"]
+                                            .any!(g => l == g)).array;
+        }
+        gitdot.git.write();
+        dfm.git.execute(["add", gitdot.git.file]);
+        return true;
+    }
+    dfm.git.mergeConflictHandler = &resolveMergeConflict;
     Sync(dfm);
 
 

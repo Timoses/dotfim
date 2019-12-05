@@ -11,9 +11,14 @@ import dotfim.gitdot.passage;
 import dotfim.cmd;
 
 
+import vibe.core.log;
+
+
 
 void main()
 {
+    setLogLevel(LogLevel.trace);
+
     string dir = buildPath(tempDir(), "dotfim", "unittest-sync-diverged");
 
     if (dir.exists) dir.rmdirRecurse;
@@ -38,7 +43,18 @@ void main()
 
     auto dotpBefore = gitdot.dot.passages;
 
-    Sync(dfm);
+    bool resolveMergeConflict()
+    {
+        gitdot.git.load();
+        gitdot.git.passages.each!((ref passage) {
+                                    passage.lines = passage.lines.filter!(l => ! ["<<<<<<< HEAD", "=======", ">>>>>>> dotfim"].any!(g => l == g)).array;
+                                });
+        gitdot.git.write();
+        dfm.git.execute(["add", gitdot.git.file]);
+        return true;
+    }
+    dfm.git.mergeConflictHandler = &resolveMergeConflict;
+    Sync(dfm, true);
 
     gitdot.dot.load();
     auto dotpAfter = gitdot.dot.passages;
