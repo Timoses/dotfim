@@ -105,8 +105,11 @@ class GitDot
         import std.typecons;
         import std.range : front, popFront, popFrontN;
 
+
         static if (is (T == Gitfile))
         {
+            git.mode = dot.mode;
+
             // sync local files to gitfile
             if (!dot.managed)
             {
@@ -320,6 +323,7 @@ class GitDot
 
             this.dot.hash = this.git.hash;
             this.dot.managed = this.git.managed;
+            this.dot.mode = this.git.mode;
 
             // todo: actually check if it synced something
             return true;
