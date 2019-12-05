@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.2.0 (2019-12-05)
+### Added
+* CI tests
+### Changed
+* `.git*` files are now allowed, but `.git/*` is still excluded as possible tracked files
+* Git repository commit messages show from which machine the commit originated
+* Duplicate empty lines between passages are reduced to one
+* Dotfim will stop if git directory contains uncommited changes
+### Fixed
+* Fix not applying dotfile changes to old git version from divergent base commit
+  (previously changes were applied to current git version)
+* Do not load *.orig gitfiles (stemming from git merging)
+
 ## v0.1.0 (2019-03-03)
 ### Added
 * Diverged branches are automatically merged during syncing
